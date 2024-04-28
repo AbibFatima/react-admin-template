@@ -17,7 +17,8 @@ const Login = () => (
           <Typography variant="h3">Login</Typography>
           {/* <Typography component={Link} to="/register" variant="body1" sx={{ textDecoration: 'none' }} color="primary">
             Don&apos;t have an account?
-          </Typography> */}
+          </Typography> 
+          */}
         </Stack>
       </Grid>
       <Grid item xs={12}>
