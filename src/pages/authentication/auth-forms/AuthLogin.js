@@ -23,7 +23,6 @@ import * as Yup from 'yup';
 import { Formik } from 'formik';
 
 // project import
-//import FirebaseSocial from './FirebaseSocial';
 import AnimateButton from 'components/@extended/AnimateButton';
 
 // assets
@@ -46,8 +45,9 @@ const AuthLogin = () => {
   return (
     <>
       <Formik
+        //valeur initiale 
         initialValues={{
-          email: 'info@codedthemes.com',
+          email: 'info@djezzy.dz',
           password: '123456',
           submit: null
         }}
@@ -57,11 +57,27 @@ const AuthLogin = () => {
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
+            const response = await fetch('/api/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(values)
+            });
+
+            if (response.ok) {
+              setStatus({ success: true });
+              setSubmitting(true);
+              // Redirection ou affichage d'un message de succès
+              window.location.href = '/dashboard/default';
+            } else {
+              const data = await response.json();
+              setErrors({ submit: data.message }); // Afficher l'erreur à l'utilisateur
+            }
+          } catch (error) {
+            console.log('Error:', error);
+            setErrors({ submit: error.message });
             setStatus({ success: false });
-            setSubmitting(false);
-          } catch (err) {
-            setStatus({ success: false });
-            setErrors({ submit: err.message });
             setSubmitting(false);
           }
         }}
@@ -144,6 +160,7 @@ const AuthLogin = () => {
                   </Link>
                 </Stack>
               </Grid>
+              {/*** Showing errors ***/}
               {errors.submit && (
                 <Grid item xs={12}>
                   <FormHelperText error>{errors.submit}</FormHelperText>
@@ -156,14 +173,6 @@ const AuthLogin = () => {
                   </Button>
                 </AnimateButton>
               </Grid>
-              {/*<Grid item xs={12}>
-                <Divider>
-                  <Typography variant="caption"> Login with</Typography>
-                </Divider>
-              </Grid>
-               <Grid item xs={12}>
-                <FirebaseSocial />
-              </Grid> */}
             </Grid>
           </form>
         )}
