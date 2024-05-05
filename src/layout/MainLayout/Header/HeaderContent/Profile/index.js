@@ -1,9 +1,10 @@
 import PropTypes from 'prop-types';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
 import {
+  Alert,
   Avatar,
   Box,
   ButtonBase,
@@ -56,8 +57,28 @@ function a11yProps(index) {
 const Profile = () => {
   const theme = useTheme();
 
+  const [logoutError, setLogoutError] = useState('');
+
   const handleLogout = async () => {
-    // logout
+    try {
+      const response = await fetch('/api/logout', {
+        method: 'GET',
+        credentials: 'same-origin' // include cookies in the request
+      });
+
+      if (response.ok) {
+        setLogoutError('');
+        // Perform any client-side actions after successful logout
+        // For example, redirecting the user to the login page
+        window.location.href = '/login';
+      } else {
+        setLogoutError('Error logging out');
+      }
+    } catch (error) {
+      console.error('Error logging out:', error);
+      // Handle errors, if any
+      setLogoutError('Error logging out');
+    }
   };
 
   const anchorRef = useRef(null);
@@ -81,6 +102,20 @@ const Profile = () => {
 
   const iconBackColorOpen = 'grey.300';
 
+  const [user, setUser] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/dashboard/default')
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => setUser(data.user))
+      .catch((error) => console.error('Error fetching user data:', error));
+  }, []);
+
   return (
     <Box sx={{ flexShrink: 0, ml: 0.75 }}>
       <ButtonBase
@@ -98,7 +133,7 @@ const Profile = () => {
       >
         <Stack direction="row" spacing={2} alignItems="center" sx={{ p: 0.5 }}>
           <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
-          <Typography variant="subtitle1">John Doe</Typography>
+          <Typography variant="subtitle1">{typeof user === 'string' ? user.charAt(0).toUpperCase() + user.slice(1) : user}</Typography>
         </Stack>
       </ButtonBase>
       <Popper
@@ -141,7 +176,9 @@ const Profile = () => {
                           <Stack direction="row" spacing={1.25} alignItems="center">
                             <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
                             <Stack>
-                              <Typography variant="h6">John Doe</Typography>
+                              <Typography variant="h6">
+                                {typeof user === 'string' ? user.charAt(0).toUpperCase() + user.slice(1) : user}
+                              </Typography>
                               <Typography variant="body2" color="textSecondary">
                                 UI/UX Designer
                               </Typography>
@@ -150,6 +187,7 @@ const Profile = () => {
                         </Grid>
                         <Grid item>
                           <IconButton size="large" color="secondary" onClick={handleLogout}>
+                            {logoutError && <Alert severity="error">{logoutError}</Alert>}
                             <LogoutOutlined />
                           </IconButton>
                         </Grid>

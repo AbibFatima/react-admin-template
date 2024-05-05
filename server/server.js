@@ -1,62 +1,49 @@
-// const express = require('express');
-// const app = express();
-// const { pool } = require('./dbConfig');
-// const bcrypt= require('bcrypt');
-// const session = require('express-session');
-// const flash = require('express-flash');
-// const passport = require('passport');
-// const cors = require('cors');
-// const initializePassport = require('./passportConfig');
-// //const path = require('../src/pages/authentication/');
-// initializePassport(passport);
+const express = require('express');
+const app = express();
+const { pool } = require('./dbConfig');
+const bcrypt = require('bcrypt');
+//const cors = require('cors');
+const session = require('express-session');
+const flash = require('express-flash');
+const passport = require('passport');
+const initializePassport = require('./passportConfig');
+initializePassport(passport);
 
-// const PORT = process.env.PORT || 3000;
 
-// app.set('view engine', 'ejs');
-// //app.set('views', path.join(__dirname, 'views'));
+app.use(express.json());
+//app.use(cors());
 // app.use(express.urlencoded({extended: false}));
 
-// app.use(session({
-//     secret : 'secret',
-//     resave : false,
-//     saveUninitialized:  false
-// }));
+app.use(session({
+    secret : 'secret',
+    resave : false,
+    saveUninitialized:  false
+}));
 
-// app.use(passport.initialize());
-// app.use(passport.session());
+app.use(passport.initialize());
+app.use(passport.session());
 
-// app.use(flash());
-// app.use(cors());
+app.use(flash());
 
-// app.get('/free/login', (req,res) => {
-//     res.render('auth/login');
+// app.get('/api/login', (req,res) => {
+//     res.render('login');
 // });
 
-// app.get('/free/register',checkAuthenticated, (req,res) => {
-//     res.render('src/pages/authentication/auth-forms/AuthRegister');
+// app.get('/api/register',checkAuthenticated, (req,res) => {
+//     res.render('register');
 // });
 
-// app.get('/free/login',checkAuthenticated, (req,res) => {
-//     res.render('auth/login');
+// app.get('/api/login',checkAuthenticated, (req,res) => {
+//     res.render('login');
 // });
 
-// app.get('/free/dashboard/default', checkNotAuthenticated, (req,res) => {
+// app.get('/api/dashboard/default', checkNotAuthenticated, (req,res) => {
 //     res.render('dashboard/default', { user: req.user.name });
 // });
 
-
-
-
-
-// app.post('/free/login', passport.authenticate('local',{
-//     successRedirect: '/free/dashboard/default',
-//     failureRedirect: '/free/login',
-//     failureFlash: true
-// }))
-
 // function checkAuthenticated(req, res,next){
 //     if(req.isAuthenticated()){
-//         return res.redirect('/free/dashboard/default');
+//         return res.redirect('/dashboard/default');
 //     }
 //     next();
 // }
@@ -65,23 +52,9 @@
 //     if(req.isAuthenticated()){
 //         return next();
 //     }
-//     res.redirect("/free/login");
+//     res.redirect("/login");
 // }
 
-
-// app.listen(PORT, () => {
-//     console.log(`Server running on Port ${PORT}`);
-// });
-
-
-const express = require('express');
-const app = express();
-const { pool } = require('./dbConfig');
-const bcrypt = require('bcrypt');
-//const cors = require('cors');
-
-app.use(express.json());
-//app.use(cors());
 
 //____________________________________________________________
 //              TEST
@@ -202,8 +175,6 @@ app.post('/api/register', async (req, res) => {
   );
 });
 
-
-
 //______________________________________________________________________________
 // Registration endpoint : 
 //          it works but not all the functionalities needed
@@ -230,38 +201,80 @@ app.post('/api/register', async (req, res) => {
 // });
 //______________________________________________________________________________
 
+//============================IT CAUSES PROBLEMS============================
+// app.post('/api/login', passport.authenticate('local',{
+//     successRedirect: '/dashboard/default',
+//     failureRedirect: '/login',
+//     failureFlash: true
+// }))
+//==========================================================================
 
+//______________________________________________________________________________
 // Login endpoint
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+//          it works ( forgot about passportConfig )
+//______________________________________________________________________________
+// app.post('/api/login', passport.authenticate('local'), async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
 
-    // Retrieve user from the database by email
-    const user = await pool.query(`SELECT * FROM usersDjezzy WHERE email = $1`, [email]);
+//     // Retrieve user from the database by email
+//     const user = await pool.query(`SELECT * FROM usersDjezzy WHERE email = $1`, [email]);
 
-    // Check if user exists and verify password
-    if (user.rows.length === 0 || !(await bcrypt.compare(password, user.rows[0].password))) {
-      res.status(401).json({ message: 'Invalid email or password' }); 
-    } else {
-      res.status(200).json({ message: 'Login successful', user: user.rows[0] }); 
-    }
-  } catch (error) {
-    console.error('Error logging in:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
+//     // Check if user exists and verify password
+//     if (user.rows.length === 0 || !(await bcrypt.compare(password, user.rows[0].password))) {
+//       res.status(401).json({ message: 'Invalid email or password' }); 
+//     } else {
+//       res.status(200).json({ message: 'Login successful', user: user.rows[0] }); 
+//     }
+//   } catch (error) {
+//     console.error('Error logging in:', error);
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// });
 
+app.post('/api/login', passport.authenticate('local', {
+    successRedirect : 'dashboard/default',
+    failureRedirect : 'login',
+    failureFlash : true
+  })
+);
 
-app.get('/api/logout', (req,res) => {
-  req.logout((err) => {
-      if (err) {
-          console.error(err);
-          return res.redirect('/api/login'); 
-      }
-      //req.flash('success_msg', 'You have logged out');
-      res.redirect('/api/login');
+// app.get('/api/logout', (req,res) => {
+//   req.logout((err) => {
+//       if (err) {
+//           console.error(err);
+//           return res.redirect('/api/login'); 
+//       }
+//       //req.flash('success_msg', 'You have logged out');
+//       res.redirect('/api/login');
+//   });
+// });
+
+// Logout route handler
+app.get('/api/logout', (req, res) => {
+    req.logout((err) => {
+        if (err) {
+            console.error(err); 
+        }
+    //req.flash('success_msg', 'You have logged out');
+    res.status(200).json({ message: 'Logout successful' });
   });
 });
+
+
+// Dashboard endpoint
+app.get('/api/dashboard/default', checkAuthenticated, (req, res) => {
+  const { firstname } = req.user;
+  res.json({ user : firstname });
+});
+
+// Middleware to check if the user is authenticated
+function checkAuthenticated(req, res,next){
+  if(req.isAuthenticated()){
+    return next();
+  }
+  res.status(401).json({ message: 'Unauthorized' });
+}
 
 
 const PORT = process.env.PORT || 4000;
