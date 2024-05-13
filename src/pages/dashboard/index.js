@@ -20,7 +20,7 @@ import {
 
 // project import
 import OrdersTable from './OrdersTable';
-import IncomeAreaChart from './IncomeAreaChart';
+import LineChartTotalChurn from './LineChartTotalChurn';
 import MonthlyBarChart from './MonthlyBarChart';
 import ReportAreaChart from './ReportAreaChart';
 import SalesColumnChart from './SalesColumnChart';
@@ -71,28 +71,37 @@ const status = [
 
 const DashboardDefault = () => {
   const [value, setValue] = useState('today');
-  const [slot, setSlot] = useState('week');
-
-  const [analyticsData, setAnalyticsData] = useState([]);
+  const [slot, setSlot] = useState('day');
+  const [analyticsData, setAnalyticsData] = useState({
+    totalCount: 0,
+    churnersCount: 0,
+    churnersPercentage: 0,
+    nonChurnersCount: 0,
+    nonChurnersPercentage: 0
+  });
 
   useEffect(() => {
-    fetchAnalyticsData();
-  }, []);
-
-  const fetchAnalyticsData = async () => {
-    try {
-      const response = await fetch('/api/analytics'); // Replace '/api/analytics' with your actual API endpoint
-      if (response.ok) {
-        const data = await response.json();
+    const fetchData = async () => {
+      try {
+        const response = await fetch('//localhost:5000/dashboard/analytics', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch analytics data. Status: ${response.status}`);
+        }
+        const responseData = await response.text();
+        const data = JSON.parse(responseData);
         setAnalyticsData(data);
-      } else {
-        console.error('Failed to fetch analytics data');
+      } catch (error) {
+        console.error('Error fetching analytics data:', error);
       }
-    } catch (error) {
-      console.error('Error fetching analytics data:', error);
-    }
-  };
+    };
 
+    fetchData();
+  }, []);
   return (
     <Grid container rowSpacing={4.5} columnSpacing={2.75}>
       {/* row 1 */}
@@ -100,9 +109,12 @@ const DashboardDefault = () => {
         <Typography variant="h5">Dashboard</Typography>
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>
+        <AnalyticEcommerce title="Total Current Customers" count={analyticsData.totalCount.toString()} />
+      </Grid>
+      <Grid item xs={12} sm={6} md={4} lg={3}>
         <AnalyticEcommerce
           title="Total Churners"
-          count={analyticsData.churnersCount}
+          count={analyticsData.churnersCount.toString()}
           percentage={analyticsData.churnersPercentage}
           isLoss
         />
@@ -110,16 +122,10 @@ const DashboardDefault = () => {
       <Grid item xs={12} sm={6} md={4} lg={3}>
         <AnalyticEcommerce
           title="Total Non Churners"
-          count={analyticsData.nonChurnersCount}
+          count={analyticsData.nonChurnersCount.toString()}
           percentage={analyticsData.nonChurnersPercentage}
           color="success"
         />
-      </Grid>
-      <Grid item xs={12} sm={6} md={4} lg={3}>
-        <AnalyticEcommerce title="Total Order" count="18,800" percentage={27.4} isLoss color="warning" extra="1,943" />
-      </Grid>
-      <Grid item xs={12} sm={6} md={4} lg={3}>
-        <AnalyticEcommerce title="Total Sales" count="$35,078" percentage={27.4} isLoss color="warning" extra="$20,395" />
       </Grid>
       <Grid item md={8} sx={{ display: { sm: 'none', md: 'block', lg: 'none' } }} />
 
@@ -127,10 +133,18 @@ const DashboardDefault = () => {
       <Grid item xs={12} md={7} lg={8}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
-            <Typography variant="h5">Unique Visitor</Typography>
+            <Typography variant="h5">Total Churn</Typography>
           </Grid>
           <Grid item>
             <Stack direction="row" alignItems="center" spacing={0}>
+              <Button
+                size="small"
+                onClick={() => setSlot('day')}
+                color={slot === 'day' ? 'primary' : 'secondary'}
+                variant={slot === 'day' ? 'outlined' : 'text'}
+              >
+                Day
+              </Button>
               <Button
                 size="small"
                 onClick={() => setSlot('month')}
@@ -139,20 +153,12 @@ const DashboardDefault = () => {
               >
                 Month
               </Button>
-              <Button
-                size="small"
-                onClick={() => setSlot('week')}
-                color={slot === 'week' ? 'primary' : 'secondary'}
-                variant={slot === 'week' ? 'outlined' : 'text'}
-              >
-                Week
-              </Button>
             </Stack>
           </Grid>
         </Grid>
         <MainCard content={false} sx={{ mt: 1.5 }}>
           <Box sx={{ pt: 1, pr: 2 }}>
-            <IncomeAreaChart slot={slot} />
+            <LineChartTotalChurn slot={slot} />
           </Box>
         </MainCard>
       </Grid>

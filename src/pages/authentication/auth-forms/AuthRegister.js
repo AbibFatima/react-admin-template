@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
-//import { Link } from 'react-router-dom';
+//import { Link as RouterLink } from 'react-router-dom';
 
 // material-ui
 import {
@@ -8,11 +8,9 @@ import {
   //AlertTitle,
   Box,
   Button,
-  //Divider,
   FormControl,
   FormHelperText,
   Grid,
-  //Link,
   IconButton,
   InputAdornment,
   InputLabel,
@@ -26,7 +24,6 @@ import * as Yup from 'yup';
 import { Formik } from 'formik';
 
 // project import
-//import FirebaseSocial from './FirebaseSocial';
 import AnimateButton from 'components/@extended/AnimateButton';
 import { strengthColor, strengthIndicator } from 'utils/password-strength';
 
@@ -55,33 +52,33 @@ const AuthRegister = () => {
     changePassword('');
   }, []);
 
-  const handleSubmit = async (values, { setErrors, setStatus, setSubmitting }) => {
-    try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(values)
-      });
+  // const handleSubmit = async (values, { setErrors, setStatus, setSubmitting }) => {
+  //   try {
+  //     const response = await fetch('/api/register', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify(values)
+  //     });
 
-      if (response.ok) {
-        setStatus({ success: true });
-        setSubmitting(true);
-        // Redirection ou affichage d'un message de succès
-        //setShowSuccessAlert(true);
-        window.location.href = '/login';
-      } else {
-        const data = await response.json();
-        setErrors({ submit: data.message }); // Afficher l'erreur à l'utilisateur
-      }
-    } catch (error) {
-      console.log('Error:', error);
-      setErrors({ submit: error.message });
-      setStatus({ success: false });
-      setSubmitting(false);
-    }
-  };
+  //     if (response.ok) {
+  //       setStatus({ success: true });
+  //       setSubmitting(true);
+  //       // Redirection ou affichage d'un message de succès
+  //       //setShowSuccessAlert(true);
+  //       window.location.href = '/login';
+  //     } else {
+  //       const data = await response.json();
+  //       setErrors({ submit: data.message }); // Afficher l'erreur à l'utilisateur
+  //     }
+  //   } catch (error) {
+  //     console.log('Error:', error);
+  //     setErrors({ submit: error.message });
+  //     setStatus({ success: false });
+  //     setSubmitting(false);
+  //   }
+  // };
 
   return (
     <>
@@ -97,17 +94,52 @@ const AuthRegister = () => {
         validationSchema={Yup.object().shape({
           firstname: Yup.string().max(255).required('First Name is required'),
           lastname: Yup.string().max(255).required('Last Name is required'),
-          email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
-          password: Yup.string().min(6, 'Password must be at least 4 characters').max(255).required('Password is required')
+          email: Yup.string()
+            .email('Must be a valid email')
+            .max(255)
+            .matches(/@djezzy\.dz$/, 'Email must end with @djezzy.dz')
+            .required('Email is required'),
+          password: Yup.string().min(6, 'Password must be at leasrt 4 characters').max(255).required('Password is required')
         })}
-        onSubmit={handleSubmit}
+        onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
+          try {
+            const response = await fetch('//localhost:5000/register', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(values)
+            });
+
+            if (response.ok) {
+              setStatus({ success: true });
+              setSubmitting(true);
+              // Redirection ou affichage d'un message de succès
+              window.location.href = '/login';
+            } else {
+              const data = await response.json();
+              if (response.status === 409) {
+                // Cas où l'e-mail existe déjà
+                setErrors({ email: data.error });
+              } else {
+                // Cas d'autres erreurs
+                setErrors({ submit: data.message });
+              }
+            }
+          } catch (error) {
+            console.log('Error:', error);
+            setErrors({ submit: error.message });
+            setStatus({ success: false });
+            setSubmitting(false);
+          }
+        }}
       >
         {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, touched, values }) => (
           <form noValidate onSubmit={handleSubmit}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <Stack spacing={1}>
-                  <InputLabel htmlFor="firstname-signup">First Name*</InputLabel>
+                  <InputLabel htmlFor="firstname-signup">First Name</InputLabel>
                   <OutlinedInput
                     id="firstname-login"
                     type="firstname"
@@ -128,7 +160,7 @@ const AuthRegister = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Stack spacing={1}>
-                  <InputLabel htmlFor="lastname-signup">Last Name*</InputLabel>
+                  <InputLabel htmlFor="lastname-signup">Last Name</InputLabel>
                   <OutlinedInput
                     fullWidth
                     error={Boolean(touched.lastname && errors.lastname)}
@@ -148,30 +180,9 @@ const AuthRegister = () => {
                   )}
                 </Stack>
               </Grid>
-              {/* <Grid item xs={12}>
-                <Stack spacing={1}>
-                  <InputLabel htmlFor="company-signup">Company</InputLabel>
-                  <OutlinedInput
-                    fullWidth
-                    error={Boolean(touched.company && errors.company)}
-                    id="company-signup"
-                    value={values.company}
-                    name="company"
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    placeholder="Demo Inc."
-                    inputProps={{}}
-                  />
-                  {touched.company && errors.company && (
-                    <FormHelperText error id="helper-text-company-signup">
-                      {errors.company}
-                    </FormHelperText>
-                  )}
-                </Stack>
-              </Grid> */}
               <Grid item xs={12}>
                 <Stack spacing={1}>
-                  <InputLabel htmlFor="email-signup">Email Address*</InputLabel>
+                  <InputLabel htmlFor="email-signup">Email Address</InputLabel>
                   <OutlinedInput
                     fullWidth
                     error={Boolean(touched.email && errors.email)}
@@ -241,18 +252,6 @@ const AuthRegister = () => {
                   </Grid>
                 </FormControl>
               </Grid>
-              {/* <Grid item xs={12}>
-                <Typography variant="body2">
-                  By Signing up, you agree to our &nbsp;
-                  <Link variant="subtitle2" component={RouterLink} to="#">
-                    Terms of Service
-                  </Link>
-                  &nbsp; and &nbsp;
-                  <Link variant="subtitle2" component={RouterLink} to="#">
-                    Privacy Policy
-                  </Link>
-                </Typography>
-              </Grid> */}
               {errors.submit && (
                 <Grid item xs={12}>
                   <FormHelperText error>{errors.submit}</FormHelperText>
@@ -269,86 +268,8 @@ const AuthRegister = () => {
           </form>
         )}
       </Formik>
-
-      {/* Success Alert : works if it's not redirected to login 
-      {showSuccessAlert && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: '10%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 9999
-          }}
-        >
-          <Alert severity="success" onClose={() => setShowSuccessAlert(false)}>
-            <AlertTitle>Success</AlertTitle>
-            User Registered Successfully!
-          </Alert>
-        </Box> 
-      )}*/}
     </>
   );
 };
 
 export default AuthRegister;
-
-//______________________________________________________________________________
-//            IT WORKS BUT WITHOUT USING CHBA7A
-//______________________________________________________________________________
-//______________________________________________________________________________
-// import React, { useEffect, useState } from 'react';
-// import axios from 'axios';
-
-// const AuthRegister = () => {
-//   const [backendData, setBackendData] = useState([{}]);
-
-//   useEffect(() => {
-//     fetch('/api')
-//       .then((response) => response.json())
-//       .then((data) => {
-//         setBackendData(data);
-//       });
-//   }, []);
-
-//   const [formData, setFormData] = useState({
-//     firstname: '',
-//     lastname: '',
-//     email: '',
-//     password: ''
-//   });
-
-//   const handleChange = (e) => {
-//     setFormData({ ...formData, [e.target.name]: e.target.value });
-//   };
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     try {
-//       const response = await axios.post('/api/register', formData);
-//       console.log(response.data);
-//       // Handle success (e.g., redirect to login page)
-//     } catch (error) {
-//       console.error('Error registering user:', error);
-//       // Handle error (e.g., display error message)
-//     }
-//   };
-
-//   return (
-//     <div>
-//       {typeof backendData.users === 'undefined' ? <p>Loading...</p> : backendData.users.map((user, i) => <p key={i}>{user}</p>)}
-//       <form onSubmit={handleSubmit}>
-//         <input type="text" name="firstname" value={formData.firstname} onChange={handleChange} placeholder="First Name" />
-//         <input type="text" name="lastname" value={formData.lastname} onChange={handleChange} placeholder="Last Name" />
-//         <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" />
-//         <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Password" />
-//         <button type="submit">Register</button>
-//       </form>
-//     </div>
-//   );
-// };
-
-// export default AuthRegister;
-//______________________________________________________________________________
-//______________________________________________________________________________
-//______________________________________________________________________________

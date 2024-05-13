@@ -4,7 +4,6 @@ import { useRef, useState, useEffect } from 'react';
 // material-ui
 import { useTheme } from '@mui/material/styles';
 import {
-  Alert,
   Avatar,
   Box,
   ButtonBase,
@@ -58,26 +57,20 @@ const Profile = () => {
   const theme = useTheme();
 
   const [logoutError, setLogoutError] = useState('');
-
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/logout', {
-        method: 'GET',
-        credentials: 'same-origin' // include cookies in the request
+      const response = await fetch('//localhost:5000/logout', {
+        method: 'POST'
       });
 
       if (response.ok) {
         setLogoutError('');
-        // Perform any client-side actions after successful logout
-        // For example, redirecting the user to the login page
         window.location.href = '/login';
       } else {
-        setLogoutError('Error logging out');
+        alert('Error logging out !');
       }
     } catch (error) {
       console.error('Error logging out:', error);
-      // Handle errors, if any
-      setLogoutError('Error logging out');
     }
   };
 
@@ -102,19 +95,45 @@ const Profile = () => {
 
   const iconBackColorOpen = 'grey.300';
 
-  const [user, setUser] = useState([]);
+  // const [user, setUser] = useState({});
+
+  // useEffect(() => {
+  //   fetch('//localhost:5000/dashboard/default')
+  //     .then((response) => {
+  //       if (!response.ok) {
+  //         throw new Error(`HTTP error! Status: ${response.status}`);
+  //       }
+  //       return response.json();
+  //     })
+  //     .then((data) => setUser(data))
+  //     .catch((error) => console.error('Error fetching user data:', error));
+  // }, []);
+
+  const [user, setUser] = useState({
+    // id: '',
+    // email: ''
+  });
 
   useEffect(() => {
-    fetch('/api/dashboard/default')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => setUser(data.user))
-      .catch((error) => console.error('Error fetching user data:', error));
+    fetchUserInfo();
   }, []);
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await fetch('//localhost:5000/info', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      } else {
+        const data = await response.json();
+        setUser(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   return (
     <Box sx={{ flexShrink: 0, ml: 0.75 }}>
@@ -133,7 +152,10 @@ const Profile = () => {
       >
         <Stack direction="row" spacing={2} alignItems="center" sx={{ p: 0.5 }}>
           <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
-          <Typography variant="subtitle1">{typeof user === 'string' ? user.charAt(0).toUpperCase() + user.slice(1) : user}</Typography>
+          <Typography variant="subtitle1">
+            {/* {typeof user.firstname === 'string' ? user.firstname.charAt(0).toUpperCase() + user.firstname.slice(1) : user.firstname} */}
+            {user.email}
+          </Typography>
         </Stack>
       </ButtonBase>
       <Popper
@@ -177,7 +199,9 @@ const Profile = () => {
                             <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
                             <Stack>
                               <Typography variant="h6">
-                                {typeof user === 'string' ? user.charAt(0).toUpperCase() + user.slice(1) : user}
+                                {typeof user.firstname === 'string'
+                                  ? user.firstname.charAt(0).toUpperCase() + user.firstname.slice(1)
+                                  : user.firstname}
                               </Typography>
                               <Typography variant="body2" color="textSecondary">
                                 UI/UX Designer
@@ -187,7 +211,7 @@ const Profile = () => {
                         </Grid>
                         <Grid item>
                           <IconButton size="large" color="secondary" onClick={handleLogout}>
-                            {logoutError && <Alert severity="error">{logoutError}</Alert>}
+                            {logoutError}
                             <LogoutOutlined />
                           </IconButton>
                         </Grid>

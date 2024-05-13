@@ -28,7 +28,7 @@ import AnimateButton from 'components/@extended/AnimateButton';
 // assets
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 
-// ============================|| FIREBASE - LOGIN ||============================ //
+// ============================|| LOGIN ||============================ //
 
 const AuthLogin = () => {
   const [checked, setChecked] = React.useState(false);
@@ -56,7 +56,7 @@ const AuthLogin = () => {
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
-            const response = await fetch('/api/login', {
+            const response = await fetch('//localhost:5000/login', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -67,11 +67,16 @@ const AuthLogin = () => {
             if (response.ok) {
               setStatus({ success: true });
               setSubmitting(true);
-              // Redirection ou affichage d'un message de succès
+              const data = await response.json();
+              localStorage.setItem('token', data.access_token);
+
               window.location.href = '/dashboard/default';
             } else {
-              const data = await response.json();
-              setErrors({ submit: data.message }); // Afficher l'erreur à l'utilisateur
+              if (response.status === 401) {
+                const data = 'Invalid credentials';
+                setErrors({ submit: data });
+                alert('Invalid credentials');
+              }
             }
           } catch (error) {
             console.log('Error:', error);
