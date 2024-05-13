@@ -29,7 +29,7 @@ import AnimateButton from 'components/@extended/AnimateButton';
 // assets
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 
-// ============================|| FIREBASE - LOGIN ||============================ //
+// ============================|| LOGIN ||============================ //
 
 const AuthLogin = () => {
   const [checked, setChecked] = React.useState(false);
@@ -47,7 +47,7 @@ const AuthLogin = () => {
     <>
       <Formik
         initialValues={{
-          email: 'info@codedthemes.com',
+          email: 'info@djezzy.dz',
           password: '123456',
           submit: null
         }}
@@ -57,11 +57,32 @@ const AuthLogin = () => {
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
+            const response = await fetch('//localhost:5000/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(values)
+            });
+
+            if (response.ok) {
+              setStatus({ success: true });
+              setSubmitting(true);
+              const data = await response.json();
+              localStorage.setItem('token', data.access_token);
+
+              window.location.href = '/dashboard/default';
+            } else {
+              if (response.status === 401) {
+                const data = 'Invalid credentials';
+                setErrors({ submit: data });
+                alert('Invalid credentials');
+              }
+            }
+          } catch (error) {
+            console.log('Error:', error);
+            setErrors({ submit: error.message });
             setStatus({ success: false });
-            setSubmitting(false);
-          } catch (err) {
-            setStatus({ success: false });
-            setErrors({ submit: err.message });
             setSubmitting(false);
           }
         }}

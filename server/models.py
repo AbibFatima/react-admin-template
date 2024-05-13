@@ -13,3 +13,13 @@ class User(db.Model):
     lastname = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), nullable=False, unique=True)
     password = db.Column(db.Text, nullable=False)
+    
+class ClientData(db.Model):
+    __tablename__ = 'clientdata'
+    id_client = db.Column(db.Integer, primary_key=True)
+    flag = db.Column(db.Integer)
+    
+class ChrunTrend(db.Model):
+    __tablename__ = 'churntrend'
+    churn_date = db.Column(db.Date, nullable=False, primary_key=True)
+    churnernumber = db.Column(db.Integer, nullable=False)

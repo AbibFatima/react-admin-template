@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
@@ -56,8 +56,22 @@ function a11yProps(index) {
 const Profile = () => {
   const theme = useTheme();
 
+  const [logoutError, setLogoutError] = useState('');
   const handleLogout = async () => {
-    // logout
+    try {
+      const response = await fetch('//localhost:5000/logout', {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        setLogoutError('');
+        window.location.href = '/login';
+      } else {
+        alert('Error logging out !');
+      }
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const anchorRef = useRef(null);
@@ -81,6 +95,46 @@ const Profile = () => {
 
   const iconBackColorOpen = 'grey.300';
 
+  // const [user, setUser] = useState({});
+
+  // useEffect(() => {
+  //   fetch('//localhost:5000/dashboard/default')
+  //     .then((response) => {
+  //       if (!response.ok) {
+  //         throw new Error(`HTTP error! Status: ${response.status}`);
+  //       }
+  //       return response.json();
+  //     })
+  //     .then((data) => setUser(data))
+  //     .catch((error) => console.error('Error fetching user data:', error));
+  // }, []);
+
+  const [user, setUser] = useState({
+    // id: '',
+    // email: ''
+  });
+
+  useEffect(() => {
+    fetchUserInfo();
+  }, []);
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await fetch('//localhost:5000/info', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      } else {
+        const data = await response.json();
+        setUser(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   return (
     <Box sx={{ flexShrink: 0, ml: 0.75 }}>
       <ButtonBase
@@ -98,7 +152,10 @@ const Profile = () => {
       >
         <Stack direction="row" spacing={2} alignItems="center" sx={{ p: 0.5 }}>
           <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
-          <Typography variant="subtitle1">John Doe</Typography>
+          <Typography variant="subtitle1">
+            {/* {typeof user.firstname === 'string' ? user.firstname.charAt(0).toUpperCase() + user.firstname.slice(1) : user.firstname} */}
+            {user.email}
+          </Typography>
         </Stack>
       </ButtonBase>
       <Popper
@@ -141,7 +198,11 @@ const Profile = () => {
                           <Stack direction="row" spacing={1.25} alignItems="center">
                             <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
                             <Stack>
-                              <Typography variant="h6">John Doe</Typography>
+                              <Typography variant="h6">
+                                {typeof user.firstname === 'string'
+                                  ? user.firstname.charAt(0).toUpperCase() + user.firstname.slice(1)
+                                  : user.firstname}
+                              </Typography>
                               <Typography variant="body2" color="textSecondary">
                                 UI/UX Designer
                               </Typography>
@@ -150,6 +211,7 @@ const Profile = () => {
                         </Grid>
                         <Grid item>
                           <IconButton size="large" color="secondary" onClick={handleLogout}>
+                            {logoutError}
                             <LogoutOutlined />
                           </IconButton>
                         </Grid>

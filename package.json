@@ -1,6 +1,7 @@
 {
-  "name": "mantis-free-react-admin-template",
+  "name": "djezzy-chrun-dashboard",
   "version": "1.2.0",
+  "proxy": "http://localhost:5000/",
   "private": true,
   "dependencies": {
     "@ant-design/colors": "^7.0.2",
