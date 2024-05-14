@@ -17,6 +17,7 @@ class User(db.Model):
 class ClientData(db.Model):
     __tablename__ = 'clientdata'
     id_client = db.Column(db.Integer, primary_key=True)
+    value_segment = db.Column(db.String(100), nullable=False)
     flag = db.Column(db.Integer)
     
 class ChrunTrend(db.Model):

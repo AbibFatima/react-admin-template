@@ -21,7 +21,7 @@ import {
 // project import
 import OrdersTable from './OrdersTable';
 import LineChartTotalChurn from './LineChartTotalChurn';
-import MonthlyBarChart from './MonthlyBarChart';
+import ValueSegmentDonutChart from './ValueSegmentDonutChart';
 import ReportAreaChart from './ReportAreaChart';
 import SalesColumnChart from './SalesColumnChart';
 import MainCard from 'components/MainCard';
@@ -140,7 +140,7 @@ const DashboardDefault = () => {
             <Stack direction="row" alignItems="center" spacing={0}>
               <Button
                 size="small"
-                onClick={() => setSlot('day')} 
+                onClick={() => setSlot('day')}
                 color={slot === 'day' ? 'primary' : 'secondary'}
                 variant={slot === 'day' ? 'outlined' : 'text'}
               >
@@ -148,7 +148,7 @@ const DashboardDefault = () => {
               </Button>
               <Button
                 size="small"
-                onClick={() => setSlot('month')} 
+                onClick={() => setSlot('month')}
                 color={slot === 'month' ? 'primary' : 'secondary'}
                 variant={slot === 'month' ? 'outlined' : 'text'}
               >
@@ -166,7 +166,7 @@ const DashboardDefault = () => {
       <Grid item xs={12} md={5} lg={4}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
-            <Typography variant="h5">Income Overview</Typography>
+            <Typography variant="h5">Churn Per Value Segment</Typography>
           </Grid>
           <Grid item />
         </Grid>
@@ -176,10 +176,9 @@ const DashboardDefault = () => {
               <Typography variant="h6" color="textSecondary">
                 This Week Statistics
               </Typography>
-              <Typography variant="h3">$7,650</Typography>
             </Stack>
           </Box>
-          <MonthlyBarChart />
+          <ValueSegmentDonutChart />
         </MainCard>
       </Grid>
 
