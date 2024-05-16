@@ -105,26 +105,10 @@ def get_analytics():
         print('Error fetching analytics data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
-#_________________________________________________
-#             Dashboard second row
-#_________________________________________________
-# @app.route('/dashboard/linechartdata', methods=["GET"])
-# def get_lineChartData():
-#     try:
-#         churn_data = ChrunTrend.query.with_entities(ChrunTrend.churn_date, ChrunTrend.churnernumber).all()
-        
-#         lineChart_data = []
-#         for churn_date, churnernumber in churn_data:
-#             lineChart_data.append({
-#                 'ChurnDate': churn_date.strftime('%Y-%m-%d'),
-#                 'ChurnerNumberPerDay': churnernumber
-#             })
-        
-#         return jsonify(lineChart_data), 200
-#     except Exception as e:
-#         print('Error fetching line chart data:', e)
-#         return jsonify({'error': 'Internal Server Error'}), 500
-    
+#______________________________________________________
+#               Dashboard second row
+#______________________________________________________
+# Line Chart : Total Churn Number Per Day and Per Month 
 @app.route('/dashboard/linechartdata', methods=['GET'])
 def get_line_chart_data():
     try:
@@ -155,6 +139,19 @@ def get_line_chart_data():
     except Exception as e:
         print('Error fetching line chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
+
+# Donut Chart : Churn Per Value Segment 
+@app.route('/dashboard/donutchartdata', methods=['GET'])
+def get_donut_chart_data():
+    try:
+        data = db.session.query(ClientData.value_segment, func.count(ClientData.flag)).group_by(ClientData.value_segment).all()
+        result = [{'valueSegment': row[0], 'flagCount': row[1]} for row in data]
+        
+        return jsonify(result), 200
+    except Exception as e:
+        print('Error fetching donut chart data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
 
 #_________________________________________________
 #             Registration Form 
