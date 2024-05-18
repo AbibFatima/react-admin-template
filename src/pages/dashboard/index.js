@@ -116,6 +116,7 @@ const DashboardDefault = () => {
           title="Total Churners"
           count={analyticsData.churnersCount.toString()}
           percentage={analyticsData.churnersPercentage}
+          color="warning"
           isLoss
         />
       </Grid>

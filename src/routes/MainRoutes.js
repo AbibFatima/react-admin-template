@@ -4,16 +4,21 @@ import { lazy } from 'react';
 import Loadable from 'components/Loadable';
 import MainLayout from 'layout/MainLayout';
 
+//import { element } from 'prop-types';
+
 // render - dashboard
 const DashboardDefault = Loadable(lazy(() => import('pages/dashboard')));
 
-// render - sample page
-//const SamplePage = Loadable(lazy(() => import('pages/extra-pages/SamplePage')));
+// render - dashboard details
+const Prediction = Loadable(lazy(() => import('pages/dashboard-details/prediction')));
 
-// render - utilities
-//const Typography = Loadable(lazy(() => import('pages/components-overview/Typography')));
-//const Color = Loadable(lazy(() => import('pages/components-overview/Color')));
-//const Shadow = Loadable(lazy(() => import('pages/components-overview/Shadow')));
+// // render - sample page
+// const SamplePage = Loadable(lazy(() => import('pages/extra-pages/SamplePage')));
+
+// // render - utilities
+// const Typography = Loadable(lazy(() => import('pages/components-overview/Typography')));
+// const Color = Loadable(lazy(() => import('pages/components-overview/Color')));
+// const Shadow = Loadable(lazy(() => import('pages/components-overview/Shadow')));
 //const AntIcons = Loadable(lazy(() => import('pages/components-overview/AntIcons')));
 
 // ==============================|| MAIN ROUTING ||============================== //
@@ -30,6 +35,10 @@ const MainRoutes = {
           element: <DashboardDefault />
         }
       ]
+    },
+    {
+      path: 'prediction',
+      element: <Prediction />
     }
   ]
 };

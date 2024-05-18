@@ -7,9 +7,10 @@ from flask_cors import CORS, cross_origin
 from functools import wraps
 from datetime import datetime, timedelta
 from sqlalchemy import func
+from flask_migrate import Migrate
 
 # project db, config import 
-from models import db, User, ClientData, ChrunTrend
+from models import db, User, ClientData, ChrunTrend, ClientInfos
 from config import ApplicationConfig 
 
 #from utils import generate_sitemap, APIException 
@@ -19,6 +20,8 @@ from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 
+import joblib
+import pandas as pd
 ## ==============================|| FLASK - BACKEND ||============================== ##
 
 app = Flask(__name__)
@@ -34,6 +37,11 @@ CORS(app, supports_credentials=True)
 db.init_app(app)  
 with app.app_context():
     db.create_all()
+
+migrate = Migrate(app,db)
+
+# Loading pre-trained XGBoost model
+model = joblib.load('Models\Xgboost_model.joblib')
 
 # Middleware to check if user is authenticated
 # def login_required(f):
@@ -152,6 +160,77 @@ def get_donut_chart_data():
         print('Error fetching donut chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
+#_________________________________________________
+#               Prediction Form 
+#_________________________________________________
+@app.route("/prediction", methods=["POST"])
+def predict_custumer():
+    try: 
+        id_client = request.json["id_client"]
+  
+        client = ClientInfos.query.filter_by(id_client=id_client).first()
+  
+        if client is None:
+            return jsonify({"error": "ID Client doesn't exist"}), 401
+        
+        # Convert client data to a pandas DataFrame
+        client_data_dict = {
+            "Tenure": client.tenure,
+            "Seg_Tenure": client.seg_tenure,
+            "Pasivity_G": client.pasivity_g,
+            "Value_Segment": client.value_segment,
+            "CNT_OUT_VOICE_ONNET_M6": client.cnt_out_voice_onnet_m6,
+            "CNT_OUT_VOICE_ONNET_M5": client.cnt_out_voice_onnet_m5,
+            "CNT_OUT_VOICE_OFFNET_M6": client.cnt_out_voice_offnet_m6,
+            "CNT_OUT_VOICE_OFFNET_M5": client.cnt_out_voice_offnet_m5,
+            "REV_OUT_VOICE_OFFNET_W4": client.rev_out_voice_offnet_w4,
+            "TRAF_OUT_VOICE_OFFNET_W4": client.traf_out_voice_offnet_w4,
+            "CNT_OUT_VOICE_ROAMING_W4": client.cnt_out_voice_roaming_w4,
+            "REV_DATA_PAG_W4": client.rev_data_pag_w4,
+            "REV_REFILL_M5": client.rev_refill_m5,
+            "CNT_REFILL_M6": client.cnt_refill_m6,
+            "CNT_REFILL_M5": client.cnt_refill_m5,
+            "CNT_REFILL_W4": client.cnt_refill_w4,
+            "REV_REFILL_W4": client.rev_refill_w4,
+            "FLAG_Inactive_3Days": client.flag_inactive_3days,
+            "Count_Inactive_3Days": client.count_inactive_3days,
+            "Count_Inactive_4Days": client.count_inactive_4days,
+            "Count_Inactive_5Days": client.count_inactive_5days,
+            "Count_Inactive_10Days_and_more": client.count_inactive_10days_and_more,
+            "CONSUMER_TYPE_M5": client.consumer_type_m5,
+            "CONSUMER_TYPE_M6": client.consumer_type_m6,
+            "TRAF_IN_VOICE_ONNET_M5": client.traf_in_voice_onnet_m5,
+            "CNT_IN_VOICE_INTERNATIONAL_M5": client.cnt_in_voice_international_m5,
+            "CNT_IN_SMS_ONNET_M4": client.cnt_in_sms_onnet_m4,
+            "TRAF_IN_VOICE_INTERNATIONAL_W4": client.traf_in_voice_international_w4,
+            "CNT_IN_SMS_OFFNET_W4": client.cnt_in_sms_offnet_w4,
+            "SLOPE_SD_VI_ONNET_DUR": client.slope_sd_vi_onnet_dur,
+            "DEGREES_SD_VI_ONNET_DUR": client.degrees_sd_vi_onnet_dur,
+            "SLOPE_VI_OFFNET_DUR": client.slope_vi_offnet_dur,
+            "SLOPE_D__FREE_VOL": client.slope_d__free_vol,
+            "Rev_Month_Before_Current_Month": int(client.rev_month_before_current_month),
+            "TRAF_OUT_VOICE_ONNET_M6": client.traf_out_voice_onnet_m6,
+            "TRAF_OUT_VOICE_ONNET_M4": client.traf_out_voice_onnet_m4,
+            "TRAF_OUT_VOICE_ONNET_M3": client.traf_out_voice_onnet_m3,
+            "REV_BUNDLE_M6": client.rev_bundle_m6,
+            "TRAF_OUT_VOICE_ONNET_W4": client.traf_out_voice_onnet_w4,
+            "CNT_OUT_VOICE_ONNET_W4": client.cnt_out_voice_onnet_w4,
+            "SLOPE_V_ONNET_DUR": client.slope_v_onnet_dur,
+            "SLOPE_SD_VI_OFFNET_DUR": client.slope_sd_vi_offnet_dur,
+        }
+        
+        client_data_df = pd.DataFrame([client_data_dict])
+        print(client_data_df)
+
+        # Predict with the client infromations 
+        prediction = model.predict(client_data_df)
+        print(prediction.tolist())
+        
+        # Get result 
+        return jsonify({'prediction': prediction.tolist()})
+    except Exception as e:
+        print('Error fetching client data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 #_________________________________________________
 #             Registration Form 
