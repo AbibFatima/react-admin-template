@@ -17,9 +17,7 @@ CREATE TABLE churntrend
     CONSTRAINT pk_churn_date PRIMARY KEY (churn_date)
 );
 
-
-
-CREATE TABLE clientchurndataset(
+CREATE TABLE clientdataset(
     id_client INTEGER PRIMARY KEY NOT NULL,
     Tenure INTEGER NOT NULL,
     Seg_Tenure integer NOT NULL,

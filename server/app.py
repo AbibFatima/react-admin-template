@@ -10,7 +10,7 @@ from sqlalchemy import func
 from flask_migrate import Migrate
 
 # project db, config import 
-from models import db, User, ClientData, ChrunTrend, ClientInfos
+from models import db, User, ChrunTrend, ClientInfos,Sous_segment
 from config import ApplicationConfig 
 
 #from utils import generate_sitemap, APIException 
@@ -93,9 +93,9 @@ def Get_Current_User():
 @app.route('/dashboard/analytics', methods=["GET"])
 def get_analytics():
     try:
-        churners_count = ClientData.query.filter_by(flag =1).count()
-        non_churners_count = ClientData.query.filter_by(flag=0).count()
-        total_count = ClientData.query.count()
+        churners_count = ClientInfos.query.filter_by(flag =1).count()
+        non_churners_count = ClientInfos.query.filter_by(flag=0).count()
+        total_count = ClientInfos.query.count()
         
         churners_percentage = (churners_count / total_count) * 100 if total_count > 0 else 0
         non_churners_percentage = (non_churners_count / total_count) * 100 if total_count > 0 else 0
@@ -152,7 +152,14 @@ def get_line_chart_data():
 @app.route('/dashboard/donutchartdata', methods=['GET'])
 def get_donut_chart_data():
     try:
-        data = db.session.query(ClientData.value_segment, func.count(ClientData.flag)).group_by(ClientData.value_segment).all()
+        # data = db.session.query(ClientInfos.value_segment, func.count(ClientInfos.flag)).group_by(ClientInfos.value_segment).all()
+        data = db.session.query(
+            Sous_segment.value_segment, func.count(ClientInfos.flag)
+        ).join(
+            ClientInfos, ClientInfos.value_segment == Sous_segment.id_segment
+        ).group_by(
+            Sous_segment.value_segment
+        ).all()
         result = [{'valueSegment': row[0], 'flagCount': row[1]} for row in data]
         
         return jsonify(result), 200
@@ -166,7 +173,7 @@ def get_donut_chart_data():
 @app.route("/prediction", methods=["POST"])
 def predict_custumer():
     try: 
-        id_client = request.json["id_client"]
+        id_client = request.json["idClient"]
   
         client = ClientInfos.query.filter_by(id_client=id_client).first()
   
@@ -226,8 +233,13 @@ def predict_custumer():
         prediction = model.predict(client_data_df)
         print(prediction.tolist())
         
+        prediction_proba = model.predict_proba(client_data_df)
+        
+        # Assuming the positive class (churn) is the second column
+        churn_probability = round(prediction_proba[0][1] * 100, 2)
+        
         # Get result 
-        return jsonify({'prediction': prediction.tolist()})
+        return jsonify({'prediction': prediction.tolist(), 'probability': churn_probability})
     except Exception as e:
         print('Error fetching client data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
