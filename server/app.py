@@ -7,7 +7,12 @@ from flask_cors import CORS, cross_origin
 from functools import wraps
 from datetime import datetime, timedelta
 from sqlalchemy import func, case
+from sqlalchemy import create_engine, Table, Column, Integer, Float, MetaData
+from sqlalchemy.sql import text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 
 # project db, config import 
 from models import db, User, ChrunTrend, ClientInfos, Sous_segment, Profiles
@@ -29,6 +34,8 @@ app.config['SECRET_KEY'] = 'vbjvsieomvdpognszvzrivnbeoib864531648531'
 app.config.from_object(ApplicationConfig)
 app.config['JWT_SECRET_KEY'] = 'JWT_SECRET_KEY'
 jwt = JWTManager(app)
+
+engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
 
 bcrypt = Bcrypt(app) 
 server_session = Session(app)
@@ -93,75 +100,145 @@ def Get_Current_User():
 #             Dashboard first row
 #_________________________________________________
 def predict_dataset():
-    client_infos = ClientInfos.query.all()
-    
-    data = []
-    for client in client_infos:
-        data.append({
-            'Tenure': client.tenure,
-            'Seg_Tenure': client.seg_tenure,
-            'Pasivity_G': client.pasivity_g,
-            'Value_Segment': client.value_segment,
-            'CNT_OUT_VOICE_ONNET_M6': client.cnt_out_voice_onnet_m6,
-            'CNT_OUT_VOICE_ONNET_M5': client.cnt_out_voice_onnet_m5,
-            'CNT_OUT_VOICE_OFFNET_M6': client.cnt_out_voice_offnet_m6,
-            'CNT_OUT_VOICE_OFFNET_M5': client.cnt_out_voice_offnet_m5,
-            'REV_OUT_VOICE_OFFNET_W4': client.rev_out_voice_offnet_w4,
-            'TRAF_OUT_VOICE_OFFNET_W4': client.traf_out_voice_offnet_w4,
-            'CNT_OUT_VOICE_ROAMING_W4': client.cnt_out_voice_roaming_w4,
-            'REV_DATA_PAG_W4': client.rev_data_pag_w4,
-            'REV_REFILL_M5': client.rev_refill_m5,
-            'CNT_REFILL_M6': client.cnt_refill_m6,
-            'CNT_REFILL_M5': client.cnt_refill_m5,
-            'CNT_REFILL_W4': client.cnt_refill_w4,
-            'REV_REFILL_W4': client.rev_refill_w4,
-            'FLAG_Inactive_3Days': client.flag_inactive_3days,
-            'Count_Inactive_3Days': client.count_inactive_3days,
-            'Count_Inactive_4Days': client.count_inactive_4days,
-            'Count_Inactive_5Days': client.count_inactive_5days,
-            'Count_Inactive_10Days_and_more': client.count_inactive_10days_and_more,
-            'CONSUMER_TYPE_M5': client.consumer_type_m5,
-            'CONSUMER_TYPE_M6': client.consumer_type_m6,
-            'TRAF_IN_VOICE_ONNET_M5': client.traf_in_voice_onnet_m5,
-            'CNT_IN_VOICE_INTERNATIONAL_M5': client.cnt_in_voice_international_m5,
-            'CNT_IN_SMS_ONNET_M4': client.cnt_in_sms_onnet_m4,
-            'TRAF_IN_VOICE_INTERNATIONAL_W4': client.traf_in_voice_international_w4,
-            'CNT_IN_SMS_OFFNET_W4': client.cnt_in_sms_offnet_w4,
-            'SLOPE_SD_VI_ONNET_DUR': client.slope_sd_vi_onnet_dur,
-            'DEGREES_SD_VI_ONNET_DUR': client.degrees_sd_vi_onnet_dur,
-            'SLOPE_VI_OFFNET_DUR': client.slope_vi_offnet_dur,
-            'SLOPE_D__FREE_VOL': client.slope_d__free_vol,
-            'Rev_Month_Before_Current_Month': int(client.rev_month_before_current_month),
-            'TRAF_OUT_VOICE_ONNET_M6': client.traf_out_voice_onnet_m6,
-            'TRAF_OUT_VOICE_ONNET_M4': client.traf_out_voice_onnet_m4,
-            'TRAF_OUT_VOICE_ONNET_M3': client.traf_out_voice_onnet_m3,
-            'REV_BUNDLE_M6': client.rev_bundle_m6,
-            'TRAF_OUT_VOICE_ONNET_W4': client.traf_out_voice_onnet_w4,
-            'CNT_OUT_VOICE_ONNET_W4': client.cnt_out_voice_onnet_w4,
-            'SLOPE_V_ONNET_DUR': client.slope_v_onnet_dur,
-            'SLOPE_SD_VI_OFFNET_DUR': client.slope_sd_vi_offnet_dur,
-            'flag' : client.flag
-        })
+    with app.app_context(): 
+        client_infos = ClientInfos.query.all()
         
-    df = pd.DataFrame(data)
-    print(df)
-    
-    X = df.drop(columns=['flag'])
-    y = df['flag']
-    y_pred = model.predict(X)
-    
-    print(y_pred)
+        data = []
+        for client in client_infos:
+            data.append({
+                'id_client': client.id_client,
+                'phone_number': client.phone_number,
+                'Tenure': client.tenure,
+                'Seg_Tenure': client.seg_tenure,
+                'Pasivity_G': client.pasivity_g,
+                'Value_Segment': client.value_segment,
+                'Tariff_profile' : client.tariff_profile,
+                'CNT_OUT_VOICE_ONNET_M6': client.cnt_out_voice_onnet_m6,
+                'CNT_OUT_VOICE_ONNET_M5': client.cnt_out_voice_onnet_m5,
+                'CNT_OUT_VOICE_OFFNET_M6': client.cnt_out_voice_offnet_m6,
+                'CNT_OUT_VOICE_OFFNET_M5': client.cnt_out_voice_offnet_m5,
+                'REV_OUT_VOICE_OFFNET_W4': client.rev_out_voice_offnet_w4,
+                'TRAF_OUT_VOICE_OFFNET_W4': client.traf_out_voice_offnet_w4,
+                'CNT_OUT_VOICE_ROAMING_W4': client.cnt_out_voice_roaming_w4,
+                'REV_DATA_PAG_W4': client.rev_data_pag_w4,
+                'REV_REFILL_M5': client.rev_refill_m5,
+                'CNT_REFILL_M6': client.cnt_refill_m6,
+                'CNT_REFILL_M5': client.cnt_refill_m5,
+                'CNT_REFILL_W4': client.cnt_refill_w4,
+                'REV_REFILL_W4': client.rev_refill_w4,
+                'FLAG_Inactive_3Days': client.flag_inactive_3days,
+                'Count_Inactive_3Days': client.count_inactive_3days,
+                'Count_Inactive_4Days': client.count_inactive_4days,
+                'Count_Inactive_5Days': client.count_inactive_5days,
+                'Count_Inactive_10Days_and_more': client.count_inactive_10days_and_more,
+                'CONSUMER_TYPE_M5': client.consumer_type_m5,
+                'CONSUMER_TYPE_M6': client.consumer_type_m6,
+                'TRAF_IN_VOICE_ONNET_M5': client.traf_in_voice_onnet_m5,
+                'CNT_IN_VOICE_INTERNATIONAL_M5': client.cnt_in_voice_international_m5,
+                'CNT_IN_SMS_ONNET_M4': client.cnt_in_sms_onnet_m4,
+                'TRAF_IN_VOICE_INTERNATIONAL_W4': client.traf_in_voice_international_w4,
+                'CNT_IN_SMS_OFFNET_W4': client.cnt_in_sms_offnet_w4,
+                'SLOPE_SD_VI_ONNET_DUR': client.slope_sd_vi_onnet_dur,
+                'DEGREES_SD_VI_ONNET_DUR': client.degrees_sd_vi_onnet_dur,
+                'SLOPE_VI_OFFNET_DUR': client.slope_vi_offnet_dur,
+                'SLOPE_D__FREE_VOL': client.slope_d__free_vol,
+                'Rev_Month_Before_Current_Month': int(client.rev_month_before_current_month),
+                'TRAF_OUT_VOICE_ONNET_M6': client.traf_out_voice_onnet_m6,
+                'TRAF_OUT_VOICE_ONNET_M4': client.traf_out_voice_onnet_m4,
+                'TRAF_OUT_VOICE_ONNET_M3': client.traf_out_voice_onnet_m3,
+                'REV_BUNDLE_M6': client.rev_bundle_m6,
+                'TRAF_OUT_VOICE_ONNET_W4': client.traf_out_voice_onnet_w4,
+                'CNT_OUT_VOICE_ONNET_W4': client.cnt_out_voice_onnet_w4,
+                'SLOPE_V_ONNET_DUR': client.slope_v_onnet_dur,
+                'SLOPE_SD_VI_OFFNET_DUR': client.slope_sd_vi_offnet_dur,
+                'flag' : client.flag
+            })
+            
+        df = pd.DataFrame(data)
+        print(df)
+        
+        X = df.drop(columns=['flag', 'id_client','phone_number','Tariff_profile'])
+        y = df['flag']
+        y_pred = model.predict(X)
+        predicted_probabilities = model.predict_proba(X)
+       
+        predicted_proba_df = pd.DataFrame(predicted_probabilities, columns=[f'Prob_{i}' for i in range(predicted_probabilities.shape[1])])
+        
+        df['pred_flag'] = y_pred
+        df = pd.concat([df, predicted_proba_df], axis=1)
+        print(df)
+        
+        # Convert DataFrame to SQLAlchemy table and create view
+        metadata = MetaData()
+
+        client_data_table = Table('client_data_predictions', metadata,
+            Column('id', Integer, primary_key=True, autoincrement=True),
+            Column('Tenure', Integer),
+            Column('Seg_Tenure', Integer),
+            Column('Pasivity_G', Integer),
+            Column('Value_Segment', Integer),
+            Column('CNT_OUT_VOICE_ONNET_M6', Integer),
+            Column('CNT_OUT_VOICE_ONNET_M5', Integer),
+            Column('CNT_OUT_VOICE_OFFNET_M6', Integer),
+            Column('CNT_OUT_VOICE_OFFNET_M5', Integer),
+            Column('REV_OUT_VOICE_OFFNET_W4', Integer),
+            Column('TRAF_OUT_VOICE_OFFNET_W4', Integer),
+            Column('CNT_OUT_VOICE_ROAMING_W4', Integer),
+            Column('REV_DATA_PAG_W4', Integer),
+            Column('REV_REFILL_M5', Integer),
+            Column('CNT_REFILL_M6', Integer),
+            Column('CNT_REFILL_M5', Integer),
+            Column('CNT_REFILL_W4', Integer),
+            Column('REV_REFILL_W4', Integer),
+            Column('FLAG_Inactive_3Days', Integer),
+            Column('Count_Inactive_3Days', Integer),
+            Column('Count_Inactive_4Days', Integer),
+            Column('Count_Inactive_5Days', Integer),
+            Column('Count_Inactive_10Days_and_more', Integer),
+            Column('CONSUMER_TYPE_M5', Integer),
+            Column('CONSUMER_TYPE_M6', Integer),
+            Column('TRAF_IN_VOICE_ONNET_M5', Integer),
+            Column('CNT_IN_VOICE_INTERNATIONAL_M5', Integer),
+            Column('CNT_IN_SMS_ONNET_M4', Integer),
+            Column('TRAF_IN_VOICE_INTERNATIONAL_W4', Integer),
+            Column('CNT_IN_SMS_OFFNET_W4', Integer),
+            Column('SLOPE_SD_VI_ONNET_DUR', Integer),
+            Column('DEGREES_SD_VI_ONNET_DUR', Integer),
+            Column('SLOPE_VI_OFFNET_DUR', Integer),
+            Column('SLOPE_D__FREE_VOL', Integer),
+            Column('Rev_Month_Before_Current_Month', Integer),
+            Column('TRAF_OUT_VOICE_ONNET_M6', Float),
+            Column('TRAF_OUT_VOICE_ONNET_M4', Float),
+            Column('TRAF_OUT_VOICE_ONNET_M3', Float),
+            Column('REV_BUNDLE_M6', Float),
+            Column('TRAF_OUT_VOICE_ONNET_W4', Float),
+            Column('CNT_OUT_VOICE_ONNET_W4', Float),
+            Column('SLOPE_V_ONNET_DUR', Float),
+            Column('SLOPE_SD_VI_OFFNET_DUR', Float),
+            Column('flag', Integer),
+            Column('pred_flag', Integer),
+            Column('predicted_probabilities', Float)
+        )
+
+        metadata.create_all(engine)
+
+        # Insert the data from the DataFrame into the table
+        df.to_sql('client_data_predictions', engine, if_exists='replace', index=False)
 
     return y_pred
-   
+ 
+predict_dataset()
+  
 @app.route('/dashboard/analytics', methods=["GET"])
 def get_analytics():
     try:
+        with app.app_context():
+            engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+            query = "SELECT pred_flag FROM client_data_predictions"
+            df = pd.read_sql(query, engine)
         
-        y_pred = predict_dataset()
-    
-        # Convert y_pred to a pandas Series
-        y_pred_series = pd.Series(y_pred.flatten())
+        # Convert the prediction column to a pandas Series
+        y_pred_series = df['pred_flag']
         
         # Count how many 1s and 0s are in y_pred_series
         churners_count = y_pred_series.value_counts().get(1, 0)
@@ -220,22 +297,45 @@ def get_line_chart_data():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 # Donut Chart : Churn Per Value Segment 
+
 @app.route('/dashboard/donutchartdata', methods=['GET'])
 def get_donut_chart_data():
     try:
-        # data = db.session.query(ClientInfos.value_segment, func.count(ClientInfos.flag)).group_by(ClientInfos.value_segment).all()
-        data = db.session.query(
-            Sous_segment.value_segment, func.count(ClientInfos.flag)
-        ).join(
-            ClientInfos, ClientInfos.value_segment == Sous_segment.id_segment
-        ).group_by(
-            Sous_segment.value_segment
-        ).all()
-        result = [{'valueSegment': row[0], 'flagCount': row[1]} for row in data]
+        sql_query = """
+            SELECT s.value_segment, COUNT(cdp.pred_flag)
+            FROM sous_segment s
+            JOIN client_data_predictions cdp ON cdp."Value_Segment" = s.id_segment
+            GROUP BY s.value_segment
+        """
+
+        # Execute the raw SQL query within the context of the Flask application
+        result = db.session.execute(text(sql_query))
         
-        return jsonify(result), 200
+        # Fetch all rows from the result
+        rows = result.fetchall()
+
+        # Process the rows into the desired format
+        data = [{'valueSegment': row[0], 'flagCount': row[1]} for row in rows]
+
+        return jsonify(data), 200
     except Exception as e:
         print('Error fetching donut chart data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
+
+#______________________________________________________
+#               Dashboard third row
+#______________________________________________________
+@app.route('/dashboard/tabledata', methods=['GET'])
+def get_table_data():
+    try:
+        
+        
+        
+        return jsonify("result"), 200
+    except Exception as e:
+        print('Error fetching table data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
 

@@ -7,6 +7,7 @@ import {
   BgColorsOutlined,
   FontSizeOutlined,
   LoadingOutlined,
+  PieChartOutlined,
   FundOutlined
 } from '@ant-design/icons';
 
@@ -19,6 +20,7 @@ const icons = {
   AntDesignOutlined,
   LoadingOutlined,
   AppstoreAddOutlined,
+  PieChartOutlined,
   FundOutlined
 };
 
@@ -29,6 +31,13 @@ const utilities = {
   title: 'Utilities',
   type: 'group',
   children: [
+    {
+      id: 'util-soussegment',
+      title: 'Sous Segment',
+      type: 'item',
+      url: '/SousSegment',
+      icon: icons.PieChartOutlined
+    },
     {
       id: 'util-prediction',
       title: 'Prediction',
