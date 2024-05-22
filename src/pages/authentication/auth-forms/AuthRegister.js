@@ -92,8 +92,8 @@ const AuthRegister = () => {
           submit: null
         }}
         validationSchema={Yup.object().shape({
-          firstname: Yup.string().max(255).required('First Name is required'),
-          lastname: Yup.string().max(255).required('Last Name is required'),
+          firstname: Yup.string().max(255).required('Firstname is required'),
+          lastname: Yup.string().max(255).required('Lastname is required'),
           email: Yup.string()
             .email('Must be a valid email')
             .max(255)
@@ -147,7 +147,6 @@ const AuthRegister = () => {
                     name="firstname"
                     onBlur={handleBlur}
                     onChange={handleChange}
-                    placeholder="Enter Firstname"
                     fullWidth
                     error={Boolean(touched.firstname && errors.firstname)}
                   />
@@ -170,7 +169,6 @@ const AuthRegister = () => {
                     name="lastname"
                     onBlur={handleBlur}
                     onChange={handleChange}
-                    placeholder="Enter Lastname"
                     inputProps={{}}
                   />
                   {touched.lastname && errors.lastname && (
@@ -192,7 +190,7 @@ const AuthRegister = () => {
                     name="email"
                     onBlur={handleBlur}
                     onChange={handleChange}
-                    placeholder="demo@djezzy.dz"
+                    placeholder="name@djezzy.dz"
                     inputProps={{}}
                   />
                   {touched.email && errors.email && (
