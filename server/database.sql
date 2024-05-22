@@ -19,6 +19,7 @@ CREATE TABLE churntrend
 
 CREATE TABLE clientdataset(
     id_client INTEGER PRIMARY KEY NOT NULL,
+    phone_number INTEGER NOT NULL,
     Tenure INTEGER NOT NULL,
     Seg_Tenure integer NOT NULL,
     Pasivity_G integer NOT NULL, 

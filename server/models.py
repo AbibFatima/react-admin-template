@@ -17,6 +17,7 @@ class User(db.Model):
 class ClientInfos(db.Model):
     __tablename__ = "clientdataset"
     id_client = db.Column(db.Integer, primary_key=True, unique=True)
+    phone_number = db.Column(db.Integer)
     tenure = db.Column(db.Integer)
     seg_tenure = db.Column(db.Integer)
     pasivity_g = db.Column(db.Integer)

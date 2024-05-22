@@ -3,6 +3,7 @@ import {
   AppstoreAddOutlined,
   AntDesignOutlined,
   BarcodeOutlined,
+  BarChartOutlined,
   BgColorsOutlined,
   FontSizeOutlined,
   LoadingOutlined,
@@ -14,6 +15,7 @@ const icons = {
   FontSizeOutlined,
   BgColorsOutlined,
   BarcodeOutlined,
+  BarChartOutlined,
   AntDesignOutlined,
   LoadingOutlined,
   AppstoreAddOutlined,
@@ -33,14 +35,14 @@ const utilities = {
       type: 'item',
       url: '/prediction',
       icon: icons.FundOutlined
+    },
+    {
+      id: 'util-uplify',
+      title: 'Uplift',
+      type: 'item',
+      url: '/uplift',
+      icon: icons.BarChartOutlined
     }
-    // {
-    //   id: 'util-typography',
-    //   title: 'Typography',
-    //   type: 'item',
-    //   url: '/typography',
-    //   icon: icons.FontSizeOutlined
-    // },
     // {
     //   id: 'util-color',
     //   title: 'Color',
