@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 
 // project import
-import OrdersTable from './OrdersTable';
+//import OrdersTable from './OrdersTable';
 import LineChartTotalChurn from './LineChartTotalChurn';
 import ValueSegmentDonutChart from './ValueSegmentDonutChart';
 import ReportAreaChart from './ReportAreaChart';
@@ -27,6 +27,7 @@ import ReportAreaChart from './ReportAreaChart';
 import MainCard from 'components/MainCard';
 import AnalyticEcommerce from 'components/cards/statistics/AnalyticEcommerce';
 import TariffProfilColumnChart from './TariffProfilColumnChart';
+import ChurnersTable from './ChurnersTable';
 
 // sales report status
 // const status = [
@@ -190,12 +191,12 @@ const DashboardDefault = () => {
       <Grid item xs={12} md={7} lg={8}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
-            <Typography variant="h5">Recent Orders</Typography>
+            <Typography variant="h5">Churners Table</Typography>
           </Grid>
           <Grid item />
         </Grid>
         <MainCard sx={{ mt: 2 }} content={false}>
-          <OrdersTable />
+          <ChurnersTable />
         </MainCard>
       </Grid>
       <Grid item xs={12} md={5} lg={4}>

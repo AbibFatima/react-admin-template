@@ -6,7 +6,7 @@ from flask_bcrypt import Bcrypt
 from flask_cors import CORS, cross_origin
 from functools import wraps
 from datetime import datetime, timedelta
-from sqlalchemy import func, case
+from sqlalchemy import func, case, inspect
 from sqlalchemy import create_engine, Table, Column, Integer, Float, MetaData
 from sqlalchemy.sql import text
 from sqlalchemy.ext.declarative import declarative_base
@@ -162,11 +162,10 @@ def predict_dataset():
         y_pred = model.predict(X)
         predicted_probabilities = model.predict_proba(X)
        
-        predicted_proba_df = pd.DataFrame(predicted_probabilities, columns=[f'Prob_{i}' for i in range(predicted_probabilities.shape[1])])
+        predicted_proba_df = pd.DataFrame(predicted_probabilities, columns=[f'prob_{i}' for i in range(predicted_probabilities.shape[1])])
         
         df['pred_flag'] = y_pred
         df = pd.concat([df, predicted_proba_df], axis=1)
-        print(df)
         
         # Convert DataFrame to SQLAlchemy table and create view
         metadata = MetaData()
@@ -217,9 +216,14 @@ def predict_dataset():
             Column('SLOPE_SD_VI_OFFNET_DUR', Float),
             Column('flag', Integer),
             Column('pred_flag', Integer),
-            Column('predicted_probabilities', Float)
+            Column('prob_0', Float),
+            Column('prob_1', Float)
         )
 
+        # Drop the table if it exists and recreate it
+        inspector = inspect(engine)
+        if inspector.has_table('client_data_predictions'):
+            client_data_table.drop(engine)
         metadata.create_all(engine)
 
         # Insert the data from the DataFrame into the table
@@ -252,8 +256,8 @@ def get_analytics():
             'totalCount': int(total_count),
             'churnersCount': int(churners_count),
             'nonChurnersCount': int(non_churners_count),
-            'churnersPercentage': float(churners_percentage),
-            'nonChurnersPercentage': round(float(non_churners_percentage), 3)
+            'churnersPercentage': round(float(churners_percentage), 2),
+            'nonChurnersPercentage': round(float(non_churners_percentage), 2)
         }
 
         return jsonify(analytics_data), 200
@@ -297,7 +301,6 @@ def get_line_chart_data():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 # Donut Chart : Churn Per Value Segment 
-
 @app.route('/dashboard/donutchartdata', methods=['GET'])
 def get_donut_chart_data():
     try:
@@ -323,17 +326,37 @@ def get_donut_chart_data():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 
-
 #______________________________________________________
 #               Dashboard third row
 #______________________________________________________
 @app.route('/dashboard/tabledata', methods=['GET'])
 def get_table_data():
     try:
-        
-        
-        
-        return jsonify("result"), 200
+        with app.app_context():
+            sql_query = """
+                SELECT cdp.id_client, cdp.phone_number, sg.seg_Tenure, ss.value_segment, p.tariff_profile, pred_flag
+                FROM client_data_predictions cdp, Segment_tenure sg, Sous_segment ss, Profiles p
+                WHERE   pred_flag = 1 
+                        and cdp."Seg_Tenure" = sg.id_tenure 
+                        and cdp."Value_Segment" = ss.id_segment
+                        and cdp."Tariff_profile" = p.id_profile ;
+            """
+            with db.engine.connect() as connection:
+                result = connection.execute(text(sql_query)).fetchall()
+
+        # Format the result as a list of dictionaries
+        formatted_result = []
+        for row in result:
+            formatted_result.append({
+                'id_client': row[0],
+                'phone_number': row[1],
+                'seg_tenure': row[2],
+                'value_segment': row[3],
+                'tariff_profile': row[4],
+                'pred_flag': row[5]
+            })
+
+        return jsonify(formatted_result), 200
     except Exception as e:
         print('Error fetching table data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
@@ -435,23 +458,26 @@ def get_column_chart_data_tarif():
 @app.route('/dashboard/maxchurnprofile', methods=['GET'])
 def get_max_churn_profile():
     try:
-        data = db.session.query(
-            Profiles.tariff_profile.label('tariff_profile'),
-            func.sum(case((ClientInfos.flag == 1, 1), else_=0)).label('churnersCount')
-        ).join(Profiles, ClientInfos.tariff_profile_id == Profiles.id_profile)\
-         .group_by(Profiles.tariff_profile)\
-         .order_by(func.sum(case((ClientInfos.flag == 1, 1), else_=0)).desc())\
-         .first()
+        with app.app_context():
+            sql_query = """
+                SELECT "Tariff_profile", SUM(CASE WHEN flag = 1 THEN 1 ELSE 0 END) AS churnersCount
+                FROM client_data_predictions
+                GROUP BY "Tariff_profile"
+                ORDER BY churnersCount DESC
+                LIMIT 1;
+            """
+            with db.engine.connect() as connection:
+                result = connection.execute(text(sql_query)).fetchone()
         
-        if data:
-            result = {
-                'tariff_profile': data.tariff_profile,
-                'churnersCount': data.churnersCount
+        if result:
+            response = {
+                'tariff_profile': result[0],
+                'churnersCount': result[1] 
             }
         else:
-            result = {'tariff_profile': None, 'churnersCount': 0}
+            response = {'tariff_profile': None, 'churnersCount': 0}
         
-        return jsonify(result), 200
+        return jsonify(response), 200
     except Exception as e:
         print('Error fetching max churn profile:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
@@ -462,102 +488,36 @@ def get_max_churn_profile():
 #_________________________________________________
 # Predict all dataset and calculate uplift
 def uplift_method():
-    client_infos = ClientInfos.query.all()
-    
-    data = []
-    for client in client_infos:
-        data.append({
-            'Tenure': client.tenure,
-            'Seg_Tenure': client.seg_tenure,
-            'Pasivity_G': client.pasivity_g,
-            'Value_Segment': client.value_segment,
-            'CNT_OUT_VOICE_ONNET_M6': client.cnt_out_voice_onnet_m6,
-            'CNT_OUT_VOICE_ONNET_M5': client.cnt_out_voice_onnet_m5,
-            'CNT_OUT_VOICE_OFFNET_M6': client.cnt_out_voice_offnet_m6,
-            'CNT_OUT_VOICE_OFFNET_M5': client.cnt_out_voice_offnet_m5,
-            'REV_OUT_VOICE_OFFNET_W4': client.rev_out_voice_offnet_w4,
-            'TRAF_OUT_VOICE_OFFNET_W4': client.traf_out_voice_offnet_w4,
-            'CNT_OUT_VOICE_ROAMING_W4': client.cnt_out_voice_roaming_w4,
-            'REV_DATA_PAG_W4': client.rev_data_pag_w4,
-            'REV_REFILL_M5': client.rev_refill_m5,
-            'CNT_REFILL_M6': client.cnt_refill_m6,
-            'CNT_REFILL_M5': client.cnt_refill_m5,
-            'CNT_REFILL_W4': client.cnt_refill_w4,
-            'REV_REFILL_W4': client.rev_refill_w4,
-            'FLAG_Inactive_3Days': client.flag_inactive_3days,
-            'Count_Inactive_3Days': client.count_inactive_3days,
-            'Count_Inactive_4Days': client.count_inactive_4days,
-            'Count_Inactive_5Days': client.count_inactive_5days,
-            'Count_Inactive_10Days_and_more': client.count_inactive_10days_and_more,
-            'CONSUMER_TYPE_M5': client.consumer_type_m5,
-            'CONSUMER_TYPE_M6': client.consumer_type_m6,
-            'TRAF_IN_VOICE_ONNET_M5': client.traf_in_voice_onnet_m5,
-            'CNT_IN_VOICE_INTERNATIONAL_M5': client.cnt_in_voice_international_m5,
-            'CNT_IN_SMS_ONNET_M4': client.cnt_in_sms_onnet_m4,
-            'TRAF_IN_VOICE_INTERNATIONAL_W4': client.traf_in_voice_international_w4,
-            'CNT_IN_SMS_OFFNET_W4': client.cnt_in_sms_offnet_w4,
-            'SLOPE_SD_VI_ONNET_DUR': client.slope_sd_vi_onnet_dur,
-            'DEGREES_SD_VI_ONNET_DUR': client.degrees_sd_vi_onnet_dur,
-            'SLOPE_VI_OFFNET_DUR': client.slope_vi_offnet_dur,
-            'SLOPE_D__FREE_VOL': client.slope_d__free_vol,
-            'Rev_Month_Before_Current_Month': int(client.rev_month_before_current_month),
-            'TRAF_OUT_VOICE_ONNET_M6': client.traf_out_voice_onnet_m6,
-            'TRAF_OUT_VOICE_ONNET_M4': client.traf_out_voice_onnet_m4,
-            'TRAF_OUT_VOICE_ONNET_M3': client.traf_out_voice_onnet_m3,
-            'REV_BUNDLE_M6': client.rev_bundle_m6,
-            'TRAF_OUT_VOICE_ONNET_W4': client.traf_out_voice_onnet_w4,
-            'CNT_OUT_VOICE_ONNET_W4': client.cnt_out_voice_onnet_w4,
-            'SLOPE_V_ONNET_DUR': client.slope_v_onnet_dur,
-            'SLOPE_SD_VI_OFFNET_DUR': client.slope_sd_vi_offnet_dur,
-            'flag' : client.flag
-        })
+    with app.app_context():
+        engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+        sql_query = """
+                SELECT flag, pred_flag AS Pred_Label, prob_1
+                FROM client_data_predictions
+        """
+        df = pd.read_sql(sql_query, engine)
         
-    df = pd.DataFrame(data)
-    print(df)
-    
-    X = df.drop(columns=['flag'])
-    y = df['flag']
-    y_pred = model.predict(X)
-    predicted_probabilities = model.predict_proba(X)
+        df_sorted = df.sort_values(by='prob_1', ascending=False)
+        df_sorted['Percentile'] = pd.qcut(df_sorted['prob_1'], q=10, labels=list(range(9, -1, -1)))
 
-    # Create DataFrames for predicted flags and probabilities
-    predicted_proba_df = pd.DataFrame(predicted_probabilities, columns=[f'Prob_{i}' for i in range(predicted_probabilities.shape[1])])
-    true_labels_df = pd.Series(y, name='True_Label')
-    predicted_labels_df = pd.Series(y_pred.flatten(), name='Pred_Label')
-    combined_df = pd.concat([predicted_proba_df, true_labels_df, predicted_labels_df], axis=1)
+        percentile_avg_sorted = df_sorted.groupby('Percentile')['prob_1'].mean().sort_values(ascending=False)
+        
+        percentile_sum = df_sorted.groupby('Percentile')['flag'].sum().sort_values(ascending=False)
 
-    # Sort combined DataFrame by 'Prob_1' in descending order
-    combined_df_sorted = combined_df.sort_values(by='Prob_1', ascending=False)
+        # Calculate the number of churners in each decile relative to the entire population
+        churners_count = df_sorted['flag'].sum()
+        churners_per_decile = []
+        num_decile = 1
+        for decile in percentile_sum:
+            churners_percentage = decile / churners_count * 100
+            churners_per_decile.append({'Decile': num_decile, 'Churners_Percentage': churners_percentage})
+            num_decile += 1 
 
-    ########### DECILE ###############
-    # Add percentile column based on 'Prob_1'
-    combined_df_sorted['Percentile'] = pd.qcut(combined_df_sorted['Prob_1'], q=10, labels=list(range(9, -1, -1)))
-    print(combined_df_sorted)
-
-    # Calculate the mean of 'Prob_1' for each percentile
-    percentile_avg_sorted = combined_df_sorted.groupby('Percentile')['Prob_1'].mean().sort_values(ascending=False)
-    print(percentile_avg_sorted)
-    
-    # Calculate the average of Prob_1 for each percentile
-    percentile_sum = combined_df_sorted.groupby('Percentile')['True_Label'].sum()
-    percentile_sum = percentile_sum.sort_values(ascending=False)
-
-    # Calculer le nombre de churners dans chaque décile par rapport à toute la population
-    churners_count = combined_df_sorted['True_Label'].sum()
-    churners_per_decile = []
-    num_decile = 1
-    for decile in percentile_sum:
-        churners_percentage = decile / churners_count * 100
-        churners_per_decile.append({'Decile': num_decile,  'Churners_Percentage': churners_percentage})
-        num_decile = num_decile + 1 
-    
-    return churners_per_decile
+        return churners_per_decile
 
 @app.route('/uplift', methods=['GET'])
 def get_column_chart_data():
     try:
         uplift_df = uplift_method()
-        print(uplift_df)
         
         return jsonify(uplift_df), 200
     except Exception as e:
@@ -577,7 +537,6 @@ def predict_custumer():
         if client is None:
             return jsonify({"error": "ID Client doesn't exist"}), 401
         
-        # Convert client data to a pandas DataFrame
         client_data_dict = {
             "Tenure": client.tenure,
             "Seg_Tenure": client.seg_tenure,
@@ -624,15 +583,12 @@ def predict_custumer():
         }
         
         client_data_df = pd.DataFrame([client_data_dict])
-        print(client_data_df)
 
         # Predict with the client infromations 
         prediction = model.predict(client_data_df)
-        print(prediction.tolist())
         
         prediction_proba = model.predict_proba(client_data_df)
         
-        # Assuming the positive class (churn) is the second column
         churn_probability = round(prediction_proba[0][1] * 100, 2)
         
         # Get result 

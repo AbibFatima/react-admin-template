@@ -1,121 +1,23 @@
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import {
+  Box,
+  Link,
+  Stack,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Typography
+} from '@mui/material';
 
-// material-ui
-import { Box, Link, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
-
-// third-party
-import { NumericFormat } from 'react-number-format';
-
-// project import
 import Dot from 'components/@extended/Dot';
-
-function createData(trackingNo, name, fat, carbs, protein) {
-  return { trackingNo, name, fat, carbs, protein };
-}
-
-const rows = [
-  createData(84564564, 'Camera Lens', 40, 2, 40570),
-  createData(98764564, 'Laptop', 300, 0, 180139),
-  createData(98756325, 'Mobile', 355, 1, 90989),
-  createData(98652366, 'Handset', 50, 1, 10239),
-  createData(13286564, 'Computer Accessories', 100, 1, 83348),
-  createData(86739658, 'TV', 99, 0, 410780),
-  createData(13256498, 'Keyboard', 125, 2, 70999),
-  createData(98753263, 'Mouse', 89, 2, 10570),
-  createData(98753275, 'Desktop', 185, 1, 98063),
-  createData(98753291, 'Chair', 100, 0, 14001)
-];
-
-function descendingComparator(a, b, orderBy) {
-  if (b[orderBy] < a[orderBy]) {
-    return -1;
-  }
-  if (b[orderBy] > a[orderBy]) {
-    return 1;
-  }
-  return 0;
-}
-
-function getComparator(order, orderBy) {
-  return order === 'desc' ? (a, b) => descendingComparator(a, b, orderBy) : (a, b) => -descendingComparator(a, b, orderBy);
-}
-
-function stableSort(array, comparator) {
-  const stabilizedThis = array.map((el, index) => [el, index]);
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) {
-      return order;
-    }
-    return a[1] - b[1];
-  });
-  return stabilizedThis.map((el) => el[0]);
-}
-
-// ==============================|| ORDER TABLE - HEADER CELL ||============================== //
-
-const headCells = [
-  {
-    id: 'trackingNo',
-    align: 'left',
-    disablePadding: false,
-    label: 'Tracking No.'
-  },
-  {
-    id: 'name',
-    align: 'left',
-    disablePadding: true,
-    label: 'Product Name'
-  },
-  {
-    id: 'fat',
-    align: 'right',
-    disablePadding: false,
-    label: 'Total Order'
-  },
-  {
-    id: 'carbs',
-    align: 'left',
-    disablePadding: false,
-
-    label: 'Status'
-  },
-  {
-    id: 'protein',
-    align: 'right',
-    disablePadding: false,
-    label: 'Total Amount'
-  }
-];
-
-// ==============================|| ORDER TABLE - HEADER ||============================== //
-
-function OrderTableHead({ order, orderBy }) {
-  return (
-    <TableHead>
-      <TableRow>
-        {headCells.map((headCell) => (
-          <TableCell
-            key={headCell.id}
-            align={headCell.align}
-            padding={headCell.disablePadding ? 'none' : 'normal'}
-            sortDirection={orderBy === headCell.id ? order : false}
-          >
-            {headCell.label}
-          </TableCell>
-        ))}
-      </TableRow>
-    </TableHead>
-  );
-}
-
-OrderTableHead.propTypes = {
-  order: PropTypes.string,
-  orderBy: PropTypes.string
-};
-
 // ==============================|| ORDER TABLE - STATUS ||============================== //
 
 const OrderStatus = ({ status }) => {
@@ -124,19 +26,15 @@ const OrderStatus = ({ status }) => {
 
   switch (status) {
     case 0:
-      color = 'warning';
-      title = 'Pending';
+      color = 'success';
+      title = 'No Churn';
       break;
     case 1:
-      color = 'success';
-      title = 'Approved';
-      break;
-    case 2:
-      color = 'error';
-      title = 'Rejected';
+      color = 'primary';
+      title = 'Churn';
       break;
     default:
-      color = 'primary';
+      color = 'warning';
       title = 'None';
   }
 
@@ -154,71 +52,147 @@ OrderStatus.propTypes = {
 
 // ==============================|| ORDER TABLE ||============================== //
 
-export default function OrderTable() {
-  const [order] = useState('asc');
-  const [orderBy] = useState('trackingNo');
-  const [selected] = useState([]);
+export default function ChurnersTable() {
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
 
-  const isSelected = (trackingNo) => selected.indexOf(trackingNo) !== -1;
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(+event.target.value);
+    setPage(0);
+  };
+
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('//localhost:5000/dashboard/tabledata');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const jsonData = await response.json();
+        setData(jsonData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <Box>
-      <TableContainer
-        sx={{
-          width: '100%',
-          overflowX: 'auto',
-          position: 'relative',
-          display: 'block',
-          maxWidth: '100%',
-          '& td, & th': { whiteSpace: 'nowrap' }
-        }}
-      >
-        <Table
-          aria-labelledby="tableTitle"
+      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+        <TableContainer
           sx={{
-            '& .MuiTableCell-root:first-of-type': {
-              pl: 2
-            },
-            '& .MuiTableCell-root:last-of-type': {
-              pr: 3
-            }
+            width: '100%',
+            overflowX: 'auto',
+            position: 'relative',
+            display: 'block',
+            maxWidth: '100%',
+            '& td, & th': { whiteSpace: 'nowrap' }
           }}
         >
-          <OrderTableHead order={order} orderBy={orderBy} />
-          <TableBody>
-            {stableSort(rows, getComparator(order, orderBy)).map((row, index) => {
-              const isItemSelected = isSelected(row.trackingNo);
-              const labelId = `enhanced-table-checkbox-${index}`;
-
-              return (
-                <TableRow
-                  hover
-                  role="checkbox"
-                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  aria-checked={isItemSelected}
-                  tabIndex={-1}
-                  key={row.trackingNo}
-                  selected={isItemSelected}
-                >
-                  <TableCell component="th" id={labelId} scope="row" align="left">
-                    <Link color="secondary" component={RouterLink} to="">
-                      {row.trackingNo}
+          <Table
+            aria-labelledby="tableTitle"
+            sx={{
+              '& .MuiTableCell-root:first-of-type': {
+                pl: 2
+              },
+              '& .MuiTableCell-root:last-of-type': {
+                pr: 3
+              }
+            }}
+          >
+            <OrderTableHead />
+            <TableBody>
+              {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
+                <TableRow hover role="checkbox" sx={{ '&:last-child td, &:last-child th': { border: 0 } }} tabIndex={-1} key={index}>
+                  <TableCell component="th" scope="row" align="left">
+                    <Link color="secondary" component={RouterLink} to={`/details/${row.id_client}`}>
+                      {row.id_client}
                     </Link>
                   </TableCell>
-                  <TableCell align="left">{row.name}</TableCell>
-                  <TableCell align="right">{row.fat}</TableCell>
+                  <TableCell align="left">{row.phone_number}</TableCell>
+                  <TableCell align="left">{row.seg_tenure}</TableCell>
+                  <TableCell align="left">{row.value_segment}</TableCell>
+                  <TableCell align="left">{row.tariff_profile}</TableCell>
                   <TableCell align="left">
-                    <OrderStatus status={row.carbs} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <NumericFormat value={row.protein} displayType="text" thousandSeparator prefix="$" />
+                    <OrderStatus status={row.pred_flag} />
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 100]}
+          component="div"
+          count={data.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      </Paper>
     </Box>
+  );
+}
+
+// OrderTableHead component
+const headCells = [
+  {
+    id: 'id_client',
+    align: 'left',
+    disablePadding: false,
+    label: 'Client ID'
+  },
+  {
+    id: 'phone_number',
+    align: 'left',
+    disablePadding: true,
+    label: 'Phone Number'
+  },
+  {
+    id: 'seg_tenure',
+    align: 'left',
+    disablePadding: false,
+    label: 'Segment Tenure'
+  },
+  {
+    id: 'value_segment',
+    align: 'left',
+    disablePadding: false,
+    label: 'Value Segment'
+  },
+  {
+    id: 'tariff_profile',
+    align: 'left',
+    disablePadding: false,
+    label: 'Tariff Profile'
+  },
+  {
+    id: 'pred_flag',
+    align: 'left',
+    disablePadding: false,
+    label: 'Predicted Flag'
+  }
+];
+
+function OrderTableHead() {
+  return (
+    <TableHead>
+      <TableRow>
+        {headCells.map((headCell) => (
+          <TableCell key={headCell.id} align={headCell.align} padding={headCell.disablePadding ? 'none' : 'normal'}>
+            {headCell.label}
+          </TableCell>
+        ))}
+      </TableRow>
+    </TableHead>
   );
 }
