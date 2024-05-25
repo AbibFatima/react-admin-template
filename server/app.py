@@ -369,85 +369,42 @@ def get_table_data():
 @app.route('/dashboard/columnchartdata', methods=['GET'])
 def get_column_chart_data_tarif():
     try:
-        client_infos = ClientInfos.query.all()
-        
+        with app.app_context():
+            sql_query = """
+                SELECT "Tariff_profile", pred_flag
+                FROM client_data_predictions;
+            """
+            with db.engine.connect() as connection:
+                result = connection.execute(text(sql_query)).fetchall()
+
         data = []
-        for client in client_infos:
+        for row in result:
             data.append({
-                'Tenure': client.tenure,
-                'Seg_Tenure': client.seg_tenure,
-                'Pasivity_G': client.pasivity_g,
-                'Value_Segment': client.value_segment,
-                'Tariff_Profile': client.tariff_profile,
-                'CNT_OUT_VOICE_ONNET_M6': client.cnt_out_voice_onnet_m6,
-                'CNT_OUT_VOICE_ONNET_M5': client.cnt_out_voice_onnet_m5,
-                'CNT_OUT_VOICE_OFFNET_M6': client.cnt_out_voice_offnet_m6,
-                'CNT_OUT_VOICE_OFFNET_M5': client.cnt_out_voice_offnet_m5,
-                'REV_OUT_VOICE_OFFNET_W4': client.rev_out_voice_offnet_w4,
-                'TRAF_OUT_VOICE_OFFNET_W4': client.traf_out_voice_offnet_w4,
-                'CNT_OUT_VOICE_ROAMING_W4': client.cnt_out_voice_roaming_w4,
-                'REV_DATA_PAG_W4': client.rev_data_pag_w4,
-                'REV_REFILL_M5': client.rev_refill_m5,
-                'CNT_REFILL_M6': client.cnt_refill_m6,
-                'CNT_REFILL_M5': client.cnt_refill_m5,
-                'CNT_REFILL_W4': client.cnt_refill_w4,
-                'REV_REFILL_W4': client.rev_refill_w4,
-                'FLAG_Inactive_3Days': client.flag_inactive_3days,
-                'Count_Inactive_3Days': client.count_inactive_3days,
-                'Count_Inactive_4Days': client.count_inactive_4days,
-                'Count_Inactive_5Days': client.count_inactive_5days,
-                'Count_Inactive_10Days_and_more': client.count_inactive_10days_and_more,
-                'CONSUMER_TYPE_M5': client.consumer_type_m5,
-                'CONSUMER_TYPE_M6': client.consumer_type_m6,
-                'TRAF_IN_VOICE_ONNET_M5': client.traf_in_voice_onnet_m5,
-                'CNT_IN_VOICE_INTERNATIONAL_M5': client.cnt_in_voice_international_m5,
-                'CNT_IN_SMS_ONNET_M4': client.cnt_in_sms_onnet_m4,
-                'TRAF_IN_VOICE_INTERNATIONAL_W4': client.traf_in_voice_international_w4,
-                'CNT_IN_SMS_OFFNET_W4': client.cnt_in_sms_offnet_w4,
-                'SLOPE_SD_VI_ONNET_DUR': client.slope_sd_vi_onnet_dur,
-                'DEGREES_SD_VI_ONNET_DUR': client.degrees_sd_vi_onnet_dur,
-                'SLOPE_VI_OFFNET_DUR': client.slope_vi_offnet_dur,
-                'SLOPE_D__FREE_VOL': client.slope_d__free_vol,
-                'Rev_Month_Before_Current_Month': int(client.rev_month_before_current_month),
-                'TRAF_OUT_VOICE_ONNET_M6': client.traf_out_voice_onnet_m6,
-                'TRAF_OUT_VOICE_ONNET_M4': client.traf_out_voice_onnet_m4,
-                'TRAF_OUT_VOICE_ONNET_M3': client.traf_out_voice_onnet_m3,
-                'REV_BUNDLE_M6': client.rev_bundle_m6,
-                'TRAF_OUT_VOICE_ONNET_W4': client.traf_out_voice_onnet_w4,
-                'CNT_OUT_VOICE_ONNET_W4': client.cnt_out_voice_onnet_w4,
-                'SLOPE_V_ONNET_DUR': client.slope_v_onnet_dur,
-                'SLOPE_SD_VI_OFFNET_DUR': client.slope_sd_vi_offnet_dur
+                'Tariff_Profile': row[0],
+                'pred_flag': row[1]
             })
-        
+
         df = pd.DataFrame(data)
-        
-        # Perform prediction
-        X = df.drop(columns=['Tariff_Profile'])
-        y_pred = model.predict(X)
-        
-        # Add predictions to the DataFrame
-        df['flag'] = y_pred
-        
+
         # Query profiles from the database
         profiles = Profiles.query.all()
-        
+
         # Create a mapping of tariff profile IDs to names
         profile_mapping = {profile.id_profile: profile.tariff_profile for profile in profiles}
-        
-        
+
         # Replace tariff profile IDs with names in the DataFrame
         df['Tariff_Profile'] = df['Tariff_Profile'].map(profile_mapping)
-        
+
         # Group by tariff profile and calculate churner and non-churner counts
-        grouped = df.groupby('Tariff_Profile').flag.value_counts().unstack(fill_value=0)
+        grouped = df.groupby('Tariff_Profile').pred_flag.value_counts().unstack(fill_value=0)
         grouped.columns = ['nonchurnersCount', 'churnersCount']  # Rename columns for clarity
         grouped = grouped.reset_index()
-        
+
         # Format the data for JSON response
         formatted_data = grouped.to_dict(orient='records')
-        
+
         print(formatted_data)
-        
+
         return jsonify(formatted_data), 200
     except Exception as e:
         print('Error fetching column chart data:', e)
@@ -528,15 +485,26 @@ def get_column_chart_data():
 #               Prediction Form 
 #_________________________________________________
 @app.route("/prediction", methods=["POST"])
-def predict_custumer():
-    try: 
+def predict_customer():
+    try:
         id_client = request.json["idClient"]
-  
+        phonenumber = request.json["phonenumber"]
+
         client = ClientInfos.query.filter_by(id_client=id_client).first()
-  
+
         if client is None:
             return jsonify({"error": "ID Client doesn't exist"}), 401
-        
+
+        db_phone_number = str(client.phone_number).strip()
+        input_phone_number = str(phonenumber).strip()
+
+        # Print for debugging
+        print(f"DB Phone Number: {db_phone_number} (Type: {type(db_phone_number)})")
+        print(f"Input Phone Number: {input_phone_number} (Type: {type(input_phone_number)})")
+
+        if db_phone_number != input_phone_number:
+            return jsonify({"error": "Phone number does not match the ID Client"}), 401
+
         client_data_dict = {
             "Tenure": client.tenure,
             "Seg_Tenure": client.seg_tenure,
@@ -581,21 +549,33 @@ def predict_custumer():
             "SLOPE_V_ONNET_DUR": client.slope_v_onnet_dur,
             "SLOPE_SD_VI_OFFNET_DUR": client.slope_sd_vi_offnet_dur,
         }
-        
+
         client_data_df = pd.DataFrame([client_data_dict])
 
-        # Predict with the client infromations 
+        # Predict with the client information
         prediction = model.predict(client_data_df)
-        
         prediction_proba = model.predict_proba(client_data_df)
-        
+
         churn_probability = round(prediction_proba[0][1] * 100, 2)
-        
-        # Get result 
+
+        # Get result
         return jsonify({'prediction': prediction.tolist(), 'probability': churn_probability})
     except Exception as e:
         print('Error fetching client data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
+
+
+@app.route('/client-data', methods=['GET'])
+def get_client_data():
+    try:
+        clients = ClientInfos.query.with_entities(ClientInfos.id_client, ClientInfos.phone_number).all()
+        client_data = [{"id_client": client.id_client, "phone_number": client.phone_number} for client in clients]
+        return jsonify(client_data), 200
+    except Exception as e:
+        print('Error fetching client data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
 
 #_________________________________________________
 #             Registration Form 
