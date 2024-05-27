@@ -12,7 +12,7 @@ const DashboardDefault = Loadable(lazy(() => import('pages/dashboard')));
 // render - dashboard details
 const Prediction = Loadable(lazy(() => import('pages/dashboard-details/prediction')));
 const Uplift = Loadable(lazy(() => import('pages/dashboard-details/uplift')));
-const SousSegment = Loadable(lazy(() => import('pages/dashboard-details/SousSegment')));
+const Segments = Loadable(lazy(() => import('pages/dashboard-details/Segments')));
 // // render - sample page
 // const SamplePage = Loadable(lazy(() => import('pages/extra-pages/SamplePage')));
 
@@ -46,8 +46,8 @@ const MainRoutes = {
       element: <Uplift />
     },
     {
-      path: 'soussegment',
-      element: <SousSegment />
+      path: 'segments',
+      element: <Segments />
     }
   ]
 };

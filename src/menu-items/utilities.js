@@ -32,10 +32,10 @@ const utilities = {
   type: 'group',
   children: [
     {
-      id: 'util-soussegment',
-      title: 'Sous Segment',
+      id: 'util-segment',
+      title: 'Segments',
       type: 'item',
-      url: '/SousSegment',
+      url: '/Segments',
       icon: icons.PieChartOutlined
     },
     {

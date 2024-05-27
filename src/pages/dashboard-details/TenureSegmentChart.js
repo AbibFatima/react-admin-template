@@ -44,12 +44,12 @@ const BarChartSousSeg = () => {
 
   useEffect(() => {
     // Fetch data from backend
-    axios.get('http://127.0.0.1:5000/Segments')
+    axios.get('http://127.0.0.1:5000/TenureSegments')
       .then((response) => {
         const data = response.data;
         
         // Process the data to match the chart's format
-        const categories = data.map(item => item.valueSegment);
+        const categories = data.map(item => item.tenureSegment);
         const nbChurners = data.map(item => item.nbChurners);
         const nbNonChurners = data.map(item => item.nbNonChurners);
         
