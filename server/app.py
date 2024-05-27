@@ -439,6 +439,88 @@ def get_max_churn_profile():
         print('Error fetching max churn profile:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
+
+#______________________________________________________
+#                     Segment Page
+#______________________________________________________
+#_________________________________________________
+@app.route('/Segments', methods=['GET'])
+def get_segments_chart_data():
+    try:
+        sql_query = """
+            SELECT 
+                s.value_segment,
+                SUM(CASE WHEN cdp.pred_flag = 1 THEN 1 ELSE 0 END) AS nb_churners,
+                SUM(CASE WHEN cdp.pred_flag = 0 THEN 1 ELSE 0 END) AS nb_non_churners
+            FROM sous_segment s
+            JOIN client_data_predictions cdp ON cdp."Value_Segment" = s.id_segment
+            GROUP BY s.value_segment
+        """
+
+        # Execute the raw SQL query within the context of the Flask application
+        result = db.session.execute(text(sql_query))
+        
+        # Fetch all rows from the result
+        rows = result.fetchall()
+
+        # Process the rows into the desired format
+        data = [
+            {
+                'valueSegment': row[0],
+                'nbChurners': row[1],
+                'nbNonChurners': row[2]
+            }
+            for row in rows
+        ]
+        # Print the raw rows and the processed data to the console for debugging
+        print('Raw rows:', rows)
+        print('Processed data:', data)
+
+        return jsonify(data), 200
+    except Exception as e:
+        print('Error fetching donut chart data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+#Segment_tenure
+@app.route('/TenureSegments', methods=['GET'])
+def get_tenure_segments_chart_data():
+    try:
+        # Write your SQL query here to calculate churners and non-churners for each tenure segment
+        sql_query = """          
+            SELECT 
+                t.seg_tenure,
+                SUM(CASE WHEN cdp.pred_flag = 1 THEN 1 ELSE 0 END) AS nb_churners_,
+                SUM(CASE WHEN cdp.pred_flag = 0 THEN 1 ELSE 0 END) AS nb_non_churners_
+            FROM segment_tenure t
+            JOIN client_data_predictions cdp ON cdp."Seg_Tenure" = t.id_tenure
+            GROUP BY t.seg_tenure
+        """
+
+        # Execute the raw SQL query within the context of the Flask application
+        result = db.session.execute(text(sql_query))
+        
+        # Fetch all rows from the result
+        rows = result.fetchall()
+
+        # Process the rows into the desired format
+        data_2 = [
+            {
+                'tenureSegment': row[0],
+                'nbChurners': row[1],
+                'nbNonChurners': row[2]
+            }
+            for row in rows
+        ]
+        
+        # Print the raw rows and the processed data to the console for debugging
+        print('Raw rows:', rows)
+        print('Processed data:', data_2)
+
+        return jsonify(data_2), 200
+    except Exception as e:
+        print('Error fetching tenure segments chart data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
 #______________________________________________________
 #                     Uplift Page
 #______________________________________________________
