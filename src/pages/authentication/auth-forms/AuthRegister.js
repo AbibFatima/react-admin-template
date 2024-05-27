@@ -1,8 +1,11 @@
+import React from 'react';
 import { useEffect, useState } from 'react';
 //import { Link as RouterLink } from 'react-router-dom';
 
 // material-ui
 import {
+  //Alert,
+  //AlertTitle,
   Box,
   Button,
   FormControl,
@@ -26,12 +29,12 @@ import { strengthColor, strengthIndicator } from 'utils/password-strength';
 
 // assets
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
-
 // ============================|| FIREBASE - REGISTER ||============================ //
 
 const AuthRegister = () => {
   const [level, setLevel] = useState();
   const [showPassword, setShowPassword] = useState(false);
+  //const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -49,6 +52,34 @@ const AuthRegister = () => {
     changePassword('');
   }, []);
 
+  // const handleSubmit = async (values, { setErrors, setStatus, setSubmitting }) => {
+  //   try {
+  //     const response = await fetch('/api/register', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify(values)
+  //     });
+
+  //     if (response.ok) {
+  //       setStatus({ success: true });
+  //       setSubmitting(true);
+  //       // Redirection ou affichage d'un message de succès
+  //       //setShowSuccessAlert(true);
+  //       window.location.href = '/login';
+  //     } else {
+  //       const data = await response.json();
+  //       setErrors({ submit: data.message }); // Afficher l'erreur à l'utilisateur
+  //     }
+  //   } catch (error) {
+  //     console.log('Error:', error);
+  //     setErrors({ submit: error.message });
+  //     setStatus({ success: false });
+  //     setSubmitting(false);
+  //   }
+  // };
+
   return (
     <>
       <Formik
@@ -56,7 +87,7 @@ const AuthRegister = () => {
           firstname: '',
           lastname: '',
           email: '',
-          company: '',
+          //company: '',
           password: '',
           submit: null
         }}

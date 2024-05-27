@@ -132,7 +132,6 @@ const DashboardDefault = () => {
           color="success"
         />
       </Grid>
-
       <Grid item md={8} sx={{ display: { sm: 'none', md: 'block', lg: 'none' } }} />
 
       {/* row 2 */}

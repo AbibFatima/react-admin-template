@@ -7,7 +7,7 @@ import { Grid, Stack, Typography } from '@mui/material';
 import AuthLogin from './auth-forms/AuthLogin';
 import AuthWrapper from './AuthWrapper';
 
-// ================================|| LOGIN ||================================ //
+// // ================================|| LOGIN ||================================ //
 
 const Login = () => (
   <AuthWrapper>
