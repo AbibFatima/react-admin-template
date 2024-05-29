@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-
 // material-ui
 import {
   //Avatar,
@@ -7,22 +6,24 @@ import {
   Box,
   Button,
   Grid,
-  List,
+  //List,
   //ListItemAvatar,
-  ListItemButton,
+  //ListItemButton,
   //ListItemSecondaryAction,
-  ListItemText,
+  //ListItemText,
   //MenuItem,
   Stack,
   //TextField,
   Typography
 } from '@mui/material';
 
+import secureLocalStorage from 'react-secure-storage';
+
 // project import
 //import OrdersTable from './OrdersTable';
 import LineChartTotalChurn from './LineChartTotalChurn';
 import ValueSegmentDonutChart from './ValueSegmentDonutChart';
-import ReportAreaChart from './ReportAreaChart';
+//import ReportAreaChart from './ReportAreaChart';
 //import SalesColumnChart from './SalesColumnChart';
 import MainCard from 'components/MainCard';
 import AnalyticEcommerce from 'components/cards/statistics/AnalyticEcommerce';
@@ -60,11 +61,13 @@ const DashboardDefault = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      const token = secureLocalStorage.getItem('token');
       try {
         const response = await fetch('//localhost:5000/dashboard/analytics', {
           method: 'GET',
           headers: {
-            'Cache-Control': 'no-cache'
+            'Cache-Control': 'no-cache',
+            Authorization: `Bearer ${token}`
           }
         });
         if (!response.ok) {
@@ -187,7 +190,7 @@ const DashboardDefault = () => {
       </Grid>
 
       {/* row 3 */}
-      <Grid item xs={12} md={7} lg={8}>
+      <Grid item xs={12}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
             <Typography variant="h5">Churners Table</Typography>
@@ -198,7 +201,7 @@ const DashboardDefault = () => {
           <ChurnersTable />
         </MainCard>
       </Grid>
-      <Grid item xs={12} md={5} lg={4}>
+      {/* <Grid item xs={12} md={5} lg={4}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
             <Typography variant="h5">Analytics Report</Typography>
@@ -222,7 +225,7 @@ const DashboardDefault = () => {
           </List>
           <ReportAreaChart />
         </MainCard>
-      </Grid>
+      </Grid> */}
 
       {/* row 4 */}
       <Grid item xs={12}>

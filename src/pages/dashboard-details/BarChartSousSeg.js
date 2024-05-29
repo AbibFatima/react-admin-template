@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '@mui/material/styles';
 import ReactApexChart from 'react-apexcharts';
-import axios from 'axios';
 
 const BarChartSousSeg = () => {
+  const theme = useTheme();
   const [series, setSeries] = useState([]);
   const [options, setOptions] = useState({
     chart: {
@@ -35,7 +36,6 @@ const BarChartSousSeg = () => {
     fill: {
       opacity: 1
     },
-    colors: ['#E57373', '#81C784'], // Soft red for churners, soft green for non-churners
     legend: {
       position: 'top',
       horizontalAlign: 'left'
@@ -43,16 +43,16 @@ const BarChartSousSeg = () => {
   });
 
   useEffect(() => {
-    // Fetch data from backend
-    axios.get('http://127.0.0.1:5000/Segments')
-      .then((response) => {
-        const data = response.data;
-        
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/Segments');
+        const data = await response.json();
+
         // Process the data to match the chart's format
-        const categories = data.map(item => item.valueSegment);
-        const nbChurners = data.map(item => item.nbChurners);
-        const nbNonChurners = data.map(item => item.nbNonChurners);
-        
+        const categories = data.map((item) => item.valueSegment);
+        const nbChurners = data.map((item) => item.nbChurners);
+        const nbNonChurners = data.map((item) => item.nbNonChurners);
+
         setSeries([
           {
             name: 'Churners',
@@ -69,13 +69,16 @@ const BarChartSousSeg = () => {
           xaxis: {
             ...prevOptions.xaxis,
             categories: categories
-          }
+          },
+          colors: [theme.palette.primary.light, theme.palette.success.light]
         }));
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('Error fetching data:', error);
-      });
-  }, []);
+      }
+    };
+
+    fetchData();
+  }, [theme.palette.primary.light, theme.palette.success.light]);
 
   return (
     <div id="chart">

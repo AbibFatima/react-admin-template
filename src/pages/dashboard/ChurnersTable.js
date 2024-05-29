@@ -14,10 +14,12 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Typography
+  Typography,
+  Button
 } from '@mui/material';
-
+import Papa from 'papaparse';
 import Dot from 'components/@extended/Dot';
+
 // ==============================|| ORDER TABLE - STATUS ||============================== //
 
 const OrderStatus = ({ status }) => {
@@ -55,16 +57,6 @@ OrderStatus.propTypes = {
 export default function ChurnersTable() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(+event.target.value);
-    setPage(0);
-  };
-
   const [data, setData] = useState([]);
 
   useEffect(() => {
@@ -84,9 +76,36 @@ export default function ChurnersTable() {
     fetchData();
   }, []);
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(+event.target.value);
+    setPage(0);
+  };
+
+  const handleDownloadCSV = () => {
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', 'churners_data.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Box>
       <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" p={2}>
+          <Typography variant="h6">Churners Table</Typography>
+          <Button variant="contained" color="primary" onClick={handleDownloadCSV}>
+            Download CSV
+          </Button>
+        </Box>
         <TableContainer
           sx={{
             width: '100%',

@@ -13,9 +13,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-
 # project db, config import 
-from models import db, User, ChrunTrend, ClientInfos, Sous_segment, Profiles
+from models import db, admin, User, Role, ChrunTrend, ClientInfos, Sous_segment, Profiles
 from config import ApplicationConfig 
 
 #from utils import generate_sitemap, APIException 
@@ -23,11 +22,15 @@ from config import ApplicationConfig
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, unset_jwt_cookies, get_jwt
+
 
 import joblib
 import pandas as pd
 ## ==============================|| FLASK - BACKEND ||============================== ##
+# from flask_login import LoginManager, login_manager, login_user
+# from flask_security import Security, SQLAlchemySessionUserDatastore
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vbjvsieomvdpognszvzrivnbeoib864531648531'
@@ -42,6 +45,7 @@ server_session = Session(app)
 CORS(app, supports_credentials=True)
 
 db.init_app(app)  
+admin.init_app(app)
 with app.app_context():
     db.create_all()
 
@@ -49,6 +53,9 @@ migrate = Migrate(app,db)
 
 # Loading pre-trained XGBoost model
 model = joblib.load('Models\Xgboost_model.joblib')
+
+# user_datastore = SQLAlchemySessionUserDatastore(db.session, User, Role)
+# security = Security(app, user_datastore)
 
 #_________________________________________________
 
@@ -63,38 +70,7 @@ model = joblib.load('Models\Xgboost_model.joblib')
 
 #_________________________________________________
 #_________________________________________________
-# Dashboard route accessible only if user is authenticated
-# @app.route("/dashboard/default")
-# #@login_required
-# def dashboard_username():
-#     user_id = session.get('user_id')
-    
-#     if not user_id:
-#         return jsonify({"error": "Unauthorized Access"}), 401
-    
-#     user = User.query.filter_by(id=user_id).first()
-    
-#     if not user:
-#         return jsonify({"error": "User not found"}), 404
-    
-#     return jsonify({
-#         "id": user.id, 
-#         "firstname": "user.firstname"
-#     })
 
-@app.route("/info")
-def Get_Current_User():
-    user_id=session.get('user_id')
-
-    if not user_id:
-        return jsonify({'error': 'Unauthorized '}), 401
-
-    user= User.query.filter_by(id=user_id).first()
-    
-    return jsonify({
-        "id": user.id,
-        "email": user.email
-    })
 
 #_________________________________________________
 #             Dashboard first row
@@ -232,8 +208,9 @@ def predict_dataset():
     return y_pred
  
 predict_dataset()
-  
+
 @app.route('/dashboard/analytics', methods=["GET"])
+@jwt_required()
 def get_analytics():
     try:
         with app.app_context():
@@ -272,29 +249,56 @@ def get_analytics():
 @app.route('/dashboard/linechartdata', methods=['GET'])
 def get_line_chart_data():
     try:
-        # Retrieve the interval from the query parameters
+        # # Retrieve the interval from the query parameters
         interval = request.args.get('interval', 'day')
 
-        # Set the default date format and interval for the query
-        date_format = "%Y-%m-%d"
-        interval_func = func.date_trunc('day', ChrunTrend.churn_date)
+        # # Set the default date format and interval for the query
+        # date_format = "%Y-%m-%d"
+        # interval_func = func.date_trunc('day', ChrunTrend.churn_date)
         
-        # Adjust the interval and date format for month aggregation
-        if interval == 'month':
-            date_format = "%Y-%m"
-            interval_func = func.date_trunc('month', ChrunTrend.churn_date)
+        # # Adjust the interval and date format for month aggregation
+        # if interval == 'month':
+        #     date_format = "%Y-%m"
+        #     interval_func = func.date_trunc('month', ChrunTrend.churn_date)
         
-        # Query the database based on the specified interval
-        churn_data = db.session.query(interval_func.label('interval'), func.sum(ChrunTrend.churnernumber).label('total_churner_number')) \
-            .group_by(interval_func) \
-            .order_by(interval_func) \
-            .all()
+        # # Query the database based on the specified interval
+        # churn_data = db.session.query(interval_func.label('interval'), func.sum(ChrunTrend.churnernumber).label('total_churner_number')) \
+        #     .group_by(interval_func) \
+        #     .order_by(interval_func) \
+        #     .all()
+            
+        
+        with app.app_context():
+            if interval == 'month':
+                sql_query =""" 
+                        SELECT 
+                            date_trunc('month', date_churn) AS month,
+                            COUNT(*) AS churner_number
+                        FROM clientdataset
+                        WHERE flag = 1
+                        GROUP BY month
+                        ORDER BY month;
+                """
+            else : 
+                sql_query =""" 
+                        SELECT 
+                            date_trunc('week', date_churn) AS week,
+                            COUNT(*) AS churner_number
+                        FROM clientdataset
+                        WHERE flag = 1
+                        GROUP BY week
+                        ORDER BY week;
+                """
 
-
+            with db.engine.connect() as connection:
+                    churn_data = connection.execute(text(sql_query)).fetchall()
+                
         # Format the data as per the interval
-        formatted_data = [{'ChurnDate': date.strftime(date_format), 'ChurnerNumber': churner_number}
-                          for date, churner_number in churn_data]
-
+        formatted_data = [{
+            'ChurnDate': date, 
+            'ChurnerNumber': churner_number}
+            for date, churner_number in churn_data]
+        
         return jsonify(formatted_data), 200
     except Exception as e:
         print('Error fetching line chart data:', e)
@@ -480,11 +484,12 @@ def get_segments_chart_data():
     except Exception as e:
         print('Error fetching donut chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
+    
+    
 #Segment_tenure
 @app.route('/TenureSegments', methods=['GET'])
 def get_tenure_segments_chart_data():
     try:
-        # Write your SQL query here to calculate churners and non-churners for each tenure segment
         sql_query = """          
             SELECT 
                 t.seg_tenure,
@@ -494,14 +499,10 @@ def get_tenure_segments_chart_data():
             JOIN client_data_predictions cdp ON cdp."Seg_Tenure" = t.id_tenure
             GROUP BY t.seg_tenure
         """
-
-        # Execute the raw SQL query within the context of the Flask application
+        
         result = db.session.execute(text(sql_query))
         
-        # Fetch all rows from the result
         rows = result.fetchall()
-
-        # Process the rows into the desired format
         data_2 = [
             {
                 'tenureSegment': row[0],
@@ -511,8 +512,6 @@ def get_tenure_segments_chart_data():
             for row in rows
         ]
         
-        # Print the raw rows and the processed data to the console for debugging
-        print('Raw rows:', rows)
         print('Processed data:', data_2)
 
         return jsonify(data_2), 200
@@ -691,33 +690,59 @@ def register():
 #_________________________________________________
 @app.route("/login", methods=["POST"])
 def login_user():
-    email = request.json["email"]
-    password = request.json["password"]
-  
-    user = User.query.filter_by(email=email).first()
-  
-    if user is None:
-        return jsonify({"error": "Unauthorized Access"}), 401
-  
-    if not bcrypt.check_password_hash(user.password, password):
-        return jsonify({"error": "Unauthorized"}), 401
-      
-    session["user_id"] = user.id
-    access_token = create_access_token(identity=email)
-    
-    return jsonify(access_token=access_token)
+    try:
+        email = request.json["email"]
+        password = request.json["password"]
+        user = User.query.filter_by(email=email).first()
+
+        if user is None:
+            return jsonify({"error": "Unauthorized Access"}), 401
+
+        if not bcrypt.check_password_hash(user.password, password):
+            return jsonify({"error": "Unauthorized"}), 401
+
+        session["user_id"] = user.id
+        print("User ID set in session:", session.get("user_id"))
+        
+        roles = [role.name for role in user.roles]
+        
+        # Generate token
+        token = create_access_token(identity=user.email)
+
+        return jsonify({'access_token': token, 'role': roles, 'firstname': user.firstname})
+    except Exception as e:
+        print('Error login:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
 #_________________________________________________
-#                   Logout
+#                   Logout Form
 #_________________________________________________
 @app.route("/logout", methods=["POST"])
-def logout_user():
-    session.pop("user_id")
-    return "200"
+@jwt_required()
+def logout():
+    session.pop("user_id", None)
+    response = jsonify({"msg": "logout successful"})
+    unset_jwt_cookies(response)
+    return response
 
 
 #_________________________________________________
-#                  
+#                  Get User Infos
 #_________________________________________________
+@app.route("/protected")
+@jwt_required()
+def protected():
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(email=current_user).first()
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    
+    return jsonify({
+        "firstname": user.firstname,
+        "roles": [role.name for role in user.roles]
+    }), 200
+
 ## ====================================================================================== ##
 if __name__ == "__main__":
     app.run(debug=True)

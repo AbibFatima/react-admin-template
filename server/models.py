@@ -1,10 +1,18 @@
 from flask_sqlalchemy import SQLAlchemy
 from uuid import uuid4
+# from flask_security import UserMixin, RoleMixin
+from flask_admin import Admin
+from flask_admin.contrib.sqla import ModelView
  
 db = SQLAlchemy()
+admin = Admin()
  
 def get_uuid():
     return uuid4().hex
+ 
+roles_users = db.Table('roles_users',
+    db.Column('user_id', db.String(100), db.ForeignKey('usersDjezzy.id')),
+    db.Column('role_id', db.Integer(), db.ForeignKey('role.id'))) 
  
 class User(db.Model):
     __tablename__ = "usersDjezzy"
@@ -13,7 +21,12 @@ class User(db.Model):
     lastname = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), nullable=False, unique=True)
     password = db.Column(db.Text, nullable=False)
+    roles = db.relationship('Role', secondary=roles_users, backref='roled')
     
+class Role(db.Model):
+    __tablename__ = 'role'
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(80), unique=True)
 class ClientInfos(db.Model):
     __tablename__ = "clientdataset"
     id_client = db.Column(db.Integer, primary_key=True, unique=True)
@@ -63,7 +76,6 @@ class ClientInfos(db.Model):
     slope_sd_vi_offnet_dur = db.Column(db.Float)
     flag = db.Column(db.Integer)
 
-
 class Sous_segment(db.Model):
     __tablename__ = 'sous_segment'
     id_segment = db.Column(db.Integer, primary_key=True)
@@ -83,3 +95,6 @@ class ChrunTrend(db.Model):
     __tablename__ = 'churntrend'
     churn_date = db.Column(db.Date, nullable=False, primary_key=True)
     churnernumber = db.Column(db.Integer, nullable=False)
+
+
+admin.add_view(ModelView(User, db.session))

@@ -21,7 +21,7 @@ const Navigation = () => {
     }
   });
 
-  return <Box sx={{ pt: 2 }}>{navGroups}</Box>;
+  return <Box sx={{ pt: 2, gap: 20 }}>{navGroups}</Box>;
 };
 
 export default Navigation;
