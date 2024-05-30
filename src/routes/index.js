@@ -11,6 +11,7 @@ import AdminRoute from './Spinner/AdminRoute';
 import MainLayout from 'layout/MainLayout';
 import Spinner from './Spinner/Spinner';
 import MainRoute from './Spinner/MainRoute';
+import AdminLayout from 'layout/AdminLayout';
 
 const AuthLogin = Loadable(lazy(() => import('pages/authentication/Login')));
 
@@ -99,7 +100,7 @@ export default function ThemeRoutes() {
       children: [
         {
           path: '/',
-          element: <MainLayout />,
+          element: <AdminLayout />,
           children: [
             {
               path: 'admin/dashboard',
