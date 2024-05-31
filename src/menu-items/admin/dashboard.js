@@ -20,14 +20,6 @@ const dashboard = {
       url: '/admin/dashboard',
       icon: icons.DashboardOutlined,
       breadcrumbs: false
-    },
-    {
-      id: 'register',
-      title: 'Register',
-      type: 'item',
-      url: '/admin/register',
-      icon: icons.DashboardOutlined,
-      breadcrumbs: false
     }
   ]
 };

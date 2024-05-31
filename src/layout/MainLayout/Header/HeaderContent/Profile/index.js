@@ -62,7 +62,7 @@ const Profile = () => {
       if (!response.ok) {
         alert('Error logging out !');
       } else {
-        setUserInfo({ firstname: '', roles: [] });
+        setUserInfo({ firstname: '', role: '' });
         secureLocalStorage.removeItem('token');
         secureLocalStorage.removeItem('name');
         secureLocalStorage.removeItem('admin');
@@ -90,7 +90,7 @@ const Profile = () => {
 
   const iconBackColorOpen = 'grey.300';
 
-  const [userInfo, setUserInfo] = useState({ firstname: '', roles: [] });
+  const [userInfo, setUserInfo] = useState({ firstname: '', role: '' });
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -115,7 +115,7 @@ const Profile = () => {
         }
 
         const data = await response.json();
-        setUserInfo({ firstname: data.firstname, roles: data.roles });
+        setUserInfo({ firstname: data.firstname, role: data.role });
       } catch (err) {
         console.error('Error fetching user info:', err);
       }
@@ -192,7 +192,7 @@ const Profile = () => {
                                   ? userInfo.firstname.charAt(0).toUpperCase() + userInfo.firstname.slice(1)
                                   : userInfo.firstname}
                               </Typography>
-                              <Typography variant="subtitle1">{userInfo.roles.join(', ')}</Typography>
+                              <Typography variant="subtitle1">{userInfo.role}</Typography>
                             </Stack>
                           </Stack>
                         </Grid>

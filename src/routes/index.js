@@ -23,7 +23,7 @@ const Segments = Loadable(lazy(() => import('pages/dashboard-details/Segments'))
 
 // render - admin pages
 const AdminDashboard = Loadable(lazy(() => import('pages/administrator')));
-const AuthRegister = Loadable(lazy(() => import('pages/authentication/Register')));
+const Users = Loadable(lazy(() => import('pages/administrator/users-details/users')));
 
 // ==============================|| ROUTING RENDER ||============================== //
 
@@ -111,26 +111,13 @@ export default function ThemeRoutes() {
               )
             },
             {
-              path: 'admin/register',
+              path: 'admin/users',
               element: (
                 <Suspense fallback={<Spinner />}>
-                  <AuthRegister />
+                  <Users />
                 </Suspense>
               )
             }
-          ]
-        }
-      ]
-    },
-    {
-      element: <AdminRoute />,
-      children: [
-        {
-          path: 'admin',
-          element: <MinimalLayout />,
-          children: [
-            { path: 'dashboard', element: <AdminDashboard /> },
-            { path: 'register', element: <AuthRegister /> }
           ]
         }
       ]

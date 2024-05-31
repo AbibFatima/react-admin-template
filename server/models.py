@@ -10,18 +10,15 @@ admin = Admin()
 def get_uuid():
     return uuid4().hex
  
-roles_users = db.Table('roles_users',
-    db.Column('user_id', db.String(100), db.ForeignKey('usersDjezzy.id')),
-    db.Column('role_id', db.Integer(), db.ForeignKey('role.id'))) 
- 
 class User(db.Model):
-    __tablename__ = "usersDjezzy"
+    __tablename__ = "users"
     id = db.Column(db.String(100), primary_key=True, unique=True, default=get_uuid)
     firstname = db.Column(db.String(200), nullable=False)
     lastname = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), nullable=False, unique=True)
     password = db.Column(db.Text, nullable=False)
-    roles = db.relationship('Role', secondary=roles_users, backref='roled')
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
+    role = db.relationship('Role', backref=db.backref('users', lazy=True))
     
 class Role(db.Model):
     __tablename__ = 'role'
@@ -98,3 +95,4 @@ class ChrunTrend(db.Model):
 
 
 admin.add_view(ModelView(User, db.session))
+admin.add_view(ModelView(Role, db.session))

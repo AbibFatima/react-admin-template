@@ -24,13 +24,9 @@ from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager, unset_jwt_cookies, get_jwt
 
-
 import joblib
 import pandas as pd
 ## ==============================|| FLASK - BACKEND ||============================== ##
-# from flask_login import LoginManager, login_manager, login_user
-# from flask_security import Security, SQLAlchemySessionUserDatastore
-
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vbjvsieomvdpognszvzrivnbeoib864531648531'
@@ -54,23 +50,155 @@ migrate = Migrate(app,db)
 # Loading pre-trained XGBoost model
 model = joblib.load('Models\Xgboost_model.joblib')
 
-# user_datastore = SQLAlchemySessionUserDatastore(db.session, User, Role)
-# security = Security(app, user_datastore)
+#_________________________________________________
+#                 GET ALL USERS
+#_________________________________________________
+@app.route('/users', methods=['GET'])
+def get_users():
+    users = User.query.all()
+    return jsonify([user_to_dict(user) for user in users])
+
+@app.route('/users/<user_id>', methods=['GET'])
+def get_user(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify(user_to_dict(user))
 
 #_________________________________________________
+#                   CREATE USER
+#_________________________________________________
+@app.route('/users', methods=['POST'])
+def create_user():
+    firstname = request.json["firstname"]
+    lastname = request.json["lastname"]
+    email = request.json["email"]
+    password = request.json["password"]
+    role_id = request.json["role_id"]
+ 
+    user_exists = User.query.filter_by(email=email).first() is not None
+ 
+    if user_exists:
+        return jsonify({"error": "Email already exists"}), 409
+     
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    
+    role = Role.query.get(role_id)
+    if not role:
+        return jsonify({"error": "Role not found"}), 404
+    
+    new_user = User(firstname=firstname, lastname=lastname, email=email, password=hashed_password, role_id=role_id)
+    db.session.add(new_user)
+    db.session.commit()
+    
+    return jsonify(user_to_dict(new_user)), 201
 
-# Middleware to check if user is authenticated
-# def login_required(f):
-#     @wraps(f)
-#     def decorated_function(*args, **kwargs):
-#         if 'user_id' not in session:
-#             return jsonify({"error": "Unauthorized"}), 401
-#         return f(*args, **kwargs)
-#     return decorated_function
+#_________________________________________________
+#                  UPDATE USER
+#_________________________________________________
+@app.route('/users/<user_id>', methods=['PUT'])
+def update_user(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.json
+    user.firstname = data.get("firstname", user.firstname)
+    user.lastname = data.get("lastname", user.lastname)
+    user.email = data.get("email", user.email)
+    
+    if "password" in data and data["password"]:
+        hashed_password = bcrypt.generate_password_hash(data["password"]).decode('utf-8')
+        user.password = hashed_password
+    
+    if "role_id" in data:
+        role_id = data["role_id"]
+        role = Role.query.get(role_id)
+        if role:
+            user.role_id = role.id
+        else:
+            return jsonify({'error': 'Role not found'}), 404
+
+
+    db.session.commit()
+
+    return jsonify(user_to_dict(user)), 200
+    
+
+#_________________________________________________
+#                  DELETE USER
+#_________________________________________________
+@app.route('/users/<user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+    db.session.delete(user)
+    db.session.commit()
+    return '', 204
+
+
+
+
+#_________________________________________________
+#             GET ALL EXISTING ROLES
+#_________________________________________________
+@app.route('/roles', methods=['GET'])
+def get_roles():
+    roles = Role.query.all()
+    return jsonify([role_to_dict(role) for role in roles])
+
+@app.route('/roles/<role_id>', methods=['GET'])
+def get_role(role_id):
+    role = Role.query.get(role_id)
+    if role is None:
+        return jsonify({'error': 'Role not found'}), 404
+    return jsonify(role_to_dict(role))
+
+@app.route('/roles', methods=['POST'])
+def create_role():
+    data = request.get_json()
+    role = Role(name=data['name'])
+    db.session.add(role)
+    db.session.commit()
+    return jsonify(role_to_dict(role)), 201
+
+@app.route('/roles/<role_id>', methods=['PUT'])
+def update_role(role_id):
+    data = request.get_json()
+    role = Role.query.get(role_id)
+    if role is None:
+        return jsonify({'error': 'Role not found'}), 404
+    role.name = data.get('name', role.name)
+    db.session.commit()
+    return jsonify(role_to_dict(role))
+
+@app.route('/roles/<role_id>', methods=['DELETE'])
+def delete_role(role_id):
+    role = Role.query.get(role_id)
+    if role is None:
+        return jsonify({'error': 'Role not found'}), 404
+    db.session.delete(role)
+    db.session.commit()
+    return '', 204
 
 #_________________________________________________
 #_________________________________________________
+def user_to_dict(user):
+    return {
+        'id': user.id,
+        'firstname': user.firstname,
+        'lastname': user.lastname,
+        'email': user.email,
+        'password': user.password,
+        'role': role_to_dict(user.role) if user.role else None
+    }
 
+def role_to_dict(role):
+    return {
+        'id': role.id,
+        'name': role.name
+    }
 
 #_________________________________________________
 #             Dashboard first row
@@ -704,12 +832,12 @@ def login_user():
         session["user_id"] = user.id
         print("User ID set in session:", session.get("user_id"))
         
-        roles = [role.name for role in user.roles]
-        
+        role_name = user.role.name
+        print(role_name)
         # Generate token
         token = create_access_token(identity=user.email)
 
-        return jsonify({'access_token': token, 'role': roles, 'firstname': user.firstname})
+        return jsonify({'access_token': token, 'role': role_name, 'firstname': user.firstname})
     except Exception as e:
         print('Error login:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
@@ -740,7 +868,7 @@ def protected():
     
     return jsonify({
         "firstname": user.firstname,
-        "roles": [role.name for role in user.roles]
+        "role": user.role.name
     }), 200
 
 ## ====================================================================================== ##
