@@ -22,9 +22,9 @@ const Uplift = Loadable(lazy(() => import('pages/dashboard-details/uplift')));
 const Segments = Loadable(lazy(() => import('pages/dashboard-details/Segments')));
 
 // render - admin pages
-const AdminDashboard = Loadable(lazy(() => import('pages/administrator')));
+//const AdminDashboard = Loadable(lazy(() => import('pages/administrator')));
 const Users = Loadable(lazy(() => import('pages/administrator/users-details/users')));
-
+const UpdateDataset = Loadable(lazy(() => import('pages/administrator/UpdateDataset')));
 // ==============================|| ROUTING RENDER ||============================== //
 
 export default function ThemeRoutes() {
@@ -99,22 +99,54 @@ export default function ThemeRoutes() {
       element: <AdminRoute />,
       children: [
         {
-          path: '/',
+          path: 'admin',
           element: <AdminLayout />,
           children: [
             {
-              path: 'admin/dashboard',
+              path: 'dashboard',
               element: (
                 <Suspense fallback={<Spinner />}>
-                  <AdminDashboard />
+                  <DashboardDefault />
                 </Suspense>
               )
             },
             {
-              path: 'admin/users',
+              path: 'users',
               element: (
                 <Suspense fallback={<Spinner />}>
                   <Users />
+                </Suspense>
+              )
+            },
+            {
+              path: 'updatedataset',
+              element: (
+                <Suspense fallback={<Spinner />}>
+                  <UpdateDataset />
+                </Suspense>
+              )
+            },
+            {
+              path: 'prediction',
+              element: (
+                <Suspense fallback={<Spinner />}>
+                  <Prediction />
+                </Suspense>
+              )
+            },
+            {
+              path: 'uplift',
+              element: (
+                <Suspense fallback={<Spinner />}>
+                  <Uplift />
+                </Suspense>
+              )
+            },
+            {
+              path: 'segments',
+              element: (
+                <Suspense fallback={<Spinner />}>
+                  <Segments />
                 </Suspense>
               )
             }

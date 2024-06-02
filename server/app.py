@@ -13,8 +13,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import SQLAlchemyError
 # project db, config import 
-from models import db, admin, User, Role, ChrunTrend, ClientInfos, Sous_segment, Profiles
+from models import db, admin, User, Role, ChrunTrend, ClientInfos, Sous_segment, Profiles, TestDataset
 from config import ApplicationConfig 
 
 #from utils import generate_sitemap, APIException 
@@ -26,6 +27,8 @@ from flask_jwt_extended import JWTManager, unset_jwt_cookies, get_jwt
 
 import joblib
 import pandas as pd
+import csv
+import io
 ## ==============================|| FLASK - BACKEND ||============================== ##
 
 app = Flask(__name__)
@@ -58,6 +61,9 @@ def get_users():
     users = User.query.all()
     return jsonify([user_to_dict(user) for user in users])
 
+#_________________________________________________
+#                   GET USER
+#_________________________________________________
 @app.route('/users/<user_id>', methods=['GET'])
 def get_user(user_id):
     user = User.query.get(user_id)
@@ -66,7 +72,7 @@ def get_user(user_id):
     return jsonify(user_to_dict(user))
 
 #_________________________________________________
-#                   CREATE USER
+#                  CREATE USER
 #_________________________________________________
 @app.route('/users', methods=['POST'])
 def create_user():
@@ -123,7 +129,6 @@ def update_user(user_id):
     db.session.commit()
 
     return jsonify(user_to_dict(user)), 200
-    
 
 #_________________________________________________
 #                  DELETE USER
@@ -137,9 +142,6 @@ def delete_user(user_id):
     db.session.commit()
     return '', 204
 
-
-
-
 #_________________________________________________
 #             GET ALL EXISTING ROLES
 #_________________________________________________
@@ -148,6 +150,9 @@ def get_roles():
     roles = Role.query.all()
     return jsonify([role_to_dict(role) for role in roles])
 
+#_________________________________________________
+#                   GET ROLE
+#_________________________________________________
 @app.route('/roles/<role_id>', methods=['GET'])
 def get_role(role_id):
     role = Role.query.get(role_id)
@@ -155,34 +160,8 @@ def get_role(role_id):
         return jsonify({'error': 'Role not found'}), 404
     return jsonify(role_to_dict(role))
 
-@app.route('/roles', methods=['POST'])
-def create_role():
-    data = request.get_json()
-    role = Role(name=data['name'])
-    db.session.add(role)
-    db.session.commit()
-    return jsonify(role_to_dict(role)), 201
-
-@app.route('/roles/<role_id>', methods=['PUT'])
-def update_role(role_id):
-    data = request.get_json()
-    role = Role.query.get(role_id)
-    if role is None:
-        return jsonify({'error': 'Role not found'}), 404
-    role.name = data.get('name', role.name)
-    db.session.commit()
-    return jsonify(role_to_dict(role))
-
-@app.route('/roles/<role_id>', methods=['DELETE'])
-def delete_role(role_id):
-    role = Role.query.get(role_id)
-    if role is None:
-        return jsonify({'error': 'Role not found'}), 404
-    db.session.delete(role)
-    db.session.commit()
-    return '', 204
-
 #_________________________________________________
+#               USER / ROLE DICTs
 #_________________________________________________
 def user_to_dict(user):
     return {
@@ -199,6 +178,123 @@ def role_to_dict(role):
         'id': role.id,
         'name': role.name
     }
+
+#_________________________________________________
+#               UPLOAD DATASET
+#_________________________________________________
+# @app.route('/upload', methods=['POST'])
+# def upload_data():
+#     if 'file' not in request.files:
+#         return jsonify({'error': 'No file part'})
+
+#     file = request.files['file']
+
+#     if file.filename == '':
+#         return jsonify({'error': 'No selected file'})
+
+    
+#     if file and allowed_file(file.filename):
+#         try:
+#             # Read CSV file
+#             stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+#             csv_data = csv.reader(stream)
+            
+#             # Read headers
+#             headers = next(csv_data)
+#             print(headers)
+
+#             # Iterate over CSV rows and insert into database
+#             for row in csv_data:
+#                 insert_sql = f"INSERT INTO testdataset ({', '.join(headers)}) VALUES ({', '.join(['%s'] * len(row))})"
+#                 print(insert_sql)
+#                 db.engine.execute(insert_sql, row)
+            
+           
+            
+#             # Commit changes to the database
+#             db.session.commit()
+#             return jsonify({'success': 'File uploaded successfully and data inserted into database.'}), 200
+#         except Exception as e:
+#             return jsonify({'error': str(e)})
+#     else:
+#         return jsonify({'error': 'Invalid file type'})
+
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file part'})
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No selected file'})
+
+    if file and file.filename.endswith('.csv'):
+        # Read CSV file into a pandas DataFrame
+        df = pd.read_csv(file)
+        
+        # Mapping between CSV column names and database column names
+        column_mapping = {
+            'id_client': 'id_client',
+            'Phone_Number': 'phone_number',
+            'Tenure': 'tenure',
+            'Seg_Tenure': 'seg_tenure',
+            'Pasivity_G': 'pasivity_g',
+            'Value_Segment':'value_segment', 
+            'Tariff_Profile':'tariff_profile', 
+            'CNT_OUT_VOICE_ONNET_M6':'cnt_out_voice_onnet_m6', 
+            'CNT_OUT_VOICE_ONNET_M5':'cnt_out_voice_onnet_m5', 
+            'CNT_OUT_VOICE_OFFNET_M6':'cnt_out_voice_offnet_m6', 
+            'CNT_OUT_VOICE_OFFNET_M5':'cnt_out_voice_offnet_m5', 
+            'REV_OUT_VOICE_OFFNET_W4':'rev_out_voice_offnet_w4' ,
+            'TRAF_OUT_VOICE_OFFNET_W4':'traf_out_voice_offnet_w4' ,
+            'CNT_OUT_VOICE_ROAMING_W4':'cnt_out_voice_roaming_w4' ,
+            'REV_DATA_PAG_W4':'rev_data_pag_w4', 
+            'REV_REFILL_M5':'rev_refill_m5' ,
+            'CNT_REFILL_M6':'cnt_refill_m6' ,
+            'CNT_REFILL_M5':'cnt_refill_m5' ,
+            'CNT_REFILL_W4':'cnt_refill_w4' ,
+            'REV_REFILL_W4':'rev_refill_w4' ,
+            'FLAG_Inactive_3Days':'flag_inactive_3days' ,
+            'Count_Inactive_3Days':'count_inactive_3days' ,
+            'Count_Inactive_4Days':'count_inactive_4days' ,
+            'Count_Inactive_5Days':'count_inactive_5days' ,
+            'Count_Inactive_10Days_and_more':'count_inactive_10days_and_more' ,
+            'CONSUMER_TYPE_M5':'consumer_type_m5' ,
+            'CONSUMER_TYPE_M6':'consumer_type_m6' ,
+            'TRAF_IN_VOICE_ONNET_M5':'traf_in_voice_onnet_m5' ,
+            'CNT_IN_VOICE_INTERNATIONAL_M5':'cnt_in_voice_international_m5' ,
+            'CNT_IN_SMS_ONNET_M4':'cnt_in_sms_onnet_m4' ,
+            'TRAF_IN_VOICE_INTERNATIONAL_W4':'traf_in_voice_international_w4' ,
+            'CNT_IN_SMS_OFFNET_W4':'cnt_in_sms_offnet_w4' ,
+            'SLOPE_SD_VI_ONNET_DUR':'slope_sd_vi_onnet_dur' ,
+            'DEGREES_SD_VI_ONNET_DUR':'degrees_sd_vi_onnet_dur' ,
+            'SLOPE_VI_OFFNET_DUR':'slope_vi_offnet_dur' ,
+            'SLOPE_D__FREE_VOL':'slope_d__free_vol' ,
+            'Rev_Month_Before_Current_Month':'rev_month_before_current_month' ,
+            'TRAF_OUT_VOICE_ONNET_M6':'traf_out_voice_onnet_m6',
+            'TRAF_OUT_VOICE_ONNET_M4':'traf_out_voice_onnet_m4',
+            'TRAF_OUT_VOICE_ONNET_M3':'traf_out_voice_onnet_m3',
+            'REV_BUNDLE_M6':'rev_bundle_m6',
+            'TRAF_OUT_VOICE_ONNET_W4':'traf_out_voice_onnet_w4',
+            'CNT_OUT_VOICE_ONNET_W4':'cnt_out_voice_onnet_w4',
+            'SLOPE_V_ONNET_DUR':'slope_v_onnet_dur',
+            'SLOPE_SD_VI_OFFNET_DUR':'slope_sd_vi_offnet_dur',
+            'flag':'flag'
+        }
+
+        # Rename DataFrame columns to match database column names
+        df.rename(columns=column_mapping, inplace=True)
+
+    # Insert data into the database
+        try:
+            with engine.connect() as connection:
+                df.to_sql('testdataset', con=connection, if_exists='append', index=False)
+            return jsonify({'success': True, 'message': 'File uploaded successfully'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)})
+
+
 
 #_________________________________________________
 #             Dashboard first row
@@ -575,7 +671,6 @@ def get_max_churn_profile():
 #______________________________________________________
 #                     Segment Page
 #______________________________________________________
-#_________________________________________________
 @app.route('/Segments', methods=['GET'])
 def get_segments_chart_data():
     try:
@@ -651,7 +746,6 @@ def get_tenure_segments_chart_data():
 #______________________________________________________
 #                     Uplift Page
 #______________________________________________________
-#_________________________________________________
 # Predict all dataset and calculate uplift
 def uplift_method():
     with app.app_context():
