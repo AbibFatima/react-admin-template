@@ -1,5 +1,7 @@
 # flask import
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, make_response, send_file
+import io
+from io import StringIO
 from flask import redirect, url_for
 from flask_session import Session
 from flask_bcrypt import Bcrypt
@@ -12,6 +14,7 @@ from sqlalchemy.sql import text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from flask_migrate import Migrate
+import pandas as pd
 from flask_sqlalchemy import SQLAlchemy
 
 # project db, config import 
@@ -549,9 +552,12 @@ def uplift_method():
     data = []
     for client in client_infos:
         data.append({
+            'id_client': client.id_client,
+            'phone_number': client.phone_number,
             'Tenure': client.tenure,
             'Seg_Tenure': client.seg_tenure,
             'Pasivity_G': client.pasivity_g,
+            'Tariff_Profile': client.tariff_profile,
             'Value_Segment': client.value_segment,
             'CNT_OUT_VOICE_ONNET_M6': client.cnt_out_voice_onnet_m6,
             'CNT_OUT_VOICE_ONNET_M5': client.cnt_out_voice_onnet_m5,
@@ -591,62 +597,85 @@ def uplift_method():
             'CNT_OUT_VOICE_ONNET_W4': client.cnt_out_voice_onnet_w4,
             'SLOPE_V_ONNET_DUR': client.slope_v_onnet_dur,
             'SLOPE_SD_VI_OFFNET_DUR': client.slope_sd_vi_offnet_dur,
-            'flag' : client.flag
+            'flag': client.flag
         })
         
     df = pd.DataFrame(data)
-    print(df)
     
-    X = df.drop(columns=['flag'])
+    id_phone_df = df[['id_client', 'phone_number','Tariff_Profile','flag']]
+    X = df.drop(columns=['flag', 'id_client', 'phone_number', 'Tariff_Profile'])
     y = df['flag']
+    
     y_pred = model.predict(X)
     predicted_probabilities = model.predict_proba(X)
 
-    # Create DataFrames for predicted flags and probabilities
     predicted_proba_df = pd.DataFrame(predicted_probabilities, columns=[f'Prob_{i}' for i in range(predicted_probabilities.shape[1])])
     true_labels_df = pd.Series(y, name='True_Label')
     predicted_labels_df = pd.Series(y_pred.flatten(), name='Pred_Label')
-    combined_df = pd.concat([predicted_proba_df, true_labels_df, predicted_labels_df], axis=1)
+    combined_df = pd.concat([id_phone_df, X, predicted_proba_df, true_labels_df, predicted_labels_df], axis=1)
 
-    # Sort combined DataFrame by 'Prob_1' in descending order
     combined_df_sorted = combined_df.sort_values(by='Prob_1', ascending=False)
 
-    ########### DECILE ###############
-    # Add percentile column based on 'Prob_1'
     combined_df_sorted['Percentile'] = pd.qcut(combined_df_sorted['Prob_1'], q=10, labels=list(range(9, -1, -1)))
-    print(combined_df_sorted)
 
-    # Calculate the mean of 'Prob_1' for each percentile
     percentile_avg_sorted = combined_df_sorted.groupby('Percentile')['Prob_1'].mean().sort_values(ascending=False)
-    print(percentile_avg_sorted)
     
-    # Calculate the average of Prob_1 for each percentile
     percentile_sum = combined_df_sorted.groupby('Percentile')['True_Label'].sum()
     percentile_sum = percentile_sum.sort_values(ascending=False)
 
-    # Calculer le nombre de churners dans chaque décile par rapport à toute la population
     churners_count = combined_df_sorted['True_Label'].sum()
     churners_per_decile = []
     num_decile = 1
     for decile in percentile_sum:
         churners_percentage = decile / churners_count * 100
-        churners_per_decile.append({'Decile': num_decile,  'Churners_Percentage': churners_percentage})
-        num_decile = num_decile + 1 
+        churners_per_decile.append({'Decile': num_decile, 'Churners_Percentage': churners_percentage})
+        num_decile += 1 
     
-    return churners_per_decile
+    deciles_data = {}
+    for i in range(10):
+        deciles_data[i] = combined_df_sorted[combined_df_sorted['Percentile'] == i]
+    
+    return churners_per_decile, deciles_data
+
 
 @app.route('/uplift', methods=['GET'])
 def get_column_chart_data():
     try:
-        uplift_df = uplift_method()
-        print(uplift_df)
-        
-        return jsonify(uplift_df), 200
+        churners_per_decile, _ = uplift_method()
+        return jsonify(churners_per_decile), 200
     except Exception as e:
         print('Error fetching column chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
-#_________________________________________________
+
+
+
+@app.route('/download-decile', methods=['GET'])
+def download_decile():
+    try:
+        _, deciles_data = uplift_method()
+
+        # Extract the required decile 1 data
+        decile_1_data = deciles_data[0]
+
+        # Select the relevant columns
+        selected_columns = ['id_client', 'phone_number', 'Tariff_Profile', 'Seg_Tenure', 'Value_Segment', 'flag', 'True_Label', 'Pred_Label']
+        decile_1_data_selected = decile_1_data[selected_columns]
+
+        # Convert DataFrame to CSV
+        csv_data = decile_1_data_selected.to_csv(index=False)
+
+        # Create a response object with CSV data
+        response = make_response(csv_data)
+        response.headers['Content-Disposition'] = 'attachment; filename=decile_1_data.csv'
+        response.headers['Content-Type'] = 'text/csv'
+
+        return response
+    except Exception as e:
+        print('Error downloading decile 1 data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
 #               Prediction Form 
 #_________________________________________________
 @app.route("/prediction", methods=["POST"])
