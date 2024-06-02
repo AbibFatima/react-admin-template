@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '@mui/material/styles';
 import ReactApexChart from 'react-apexcharts';
-import axios from 'axios';
 
 const BarChartSousSeg = () => {
+  const theme = useTheme();
   const [series, setSeries] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [options, setOptions] = useState({
     chart: {
       type: 'bar',
@@ -43,16 +45,16 @@ const BarChartSousSeg = () => {
   });
 
   useEffect(() => {
-    // Fetch data from backend
-    axios.get('http://127.0.0.1:5000/TenureSegments')
-      .then((response) => {
-        const data = response.data;
-        
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/TenureSegments');
+        const data = await response.json();
+
         // Process the data to match the chart's format
-        const categories = data.map(item => item.tenureSegment);
-        const nbChurners = data.map(item => item.nbChurners);
-        const nbNonChurners = data.map(item => item.nbNonChurners);
-        
+        const categories = data.map((item) => item.tenureSegment);
+        const nbChurners = data.map((item) => item.nbChurners);
+        const nbNonChurners = data.map((item) => item.nbNonChurners);
+
         setSeries([
           {
             name: 'Churners',
@@ -64,18 +66,24 @@ const BarChartSousSeg = () => {
           }
         ]);
 
-        setOptions((prevOptions) => ({
-          ...prevOptions,
-          xaxis: {
-            ...prevOptions.xaxis,
-            categories: categories
-          }
-        }));
-      })
-      .catch((error) => {
+        setCategories(categories);
+      } catch (error) {
         console.error('Error fetching data:', error);
-      });
+      }
+    };
+    fetchData();
   }, []);
+
+  useEffect(() => {
+    setOptions((prevOptions) => ({
+      ...prevOptions,
+      xaxis: {
+        ...prevOptions.xaxis,
+        categories: categories
+      },
+      colors: [theme.palette.primary.light, theme.palette.success.light]
+    }));
+  }, [categories, theme.palette.primary.light, theme.palette.success.light]);
 
   return (
     <div id="chart">

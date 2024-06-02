@@ -8,7 +8,7 @@ from flask_bcrypt import Bcrypt
 from flask_cors import CORS, cross_origin
 from functools import wraps
 from datetime import datetime, timedelta
-from sqlalchemy import func, case
+from sqlalchemy import func, case, inspect
 from sqlalchemy import create_engine, Table, Column, Integer, Float, MetaData
 from sqlalchemy.sql import text
 from sqlalchemy.ext.declarative import declarative_base
@@ -16,9 +16,9 @@ from sqlalchemy.orm import sessionmaker
 from flask_migrate import Migrate
 import pandas as pd
 from flask_sqlalchemy import SQLAlchemy
-
+from sqlalchemy.exc import SQLAlchemyError
 # project db, config import 
-from models import db, User, ChrunTrend, ClientInfos, Sous_segment, Profiles
+from models import db, admin, User, Role, ChrunTrend, ClientInfos, Sous_segment, Profiles, TestDataset
 from config import ApplicationConfig 
 
 #from utils import generate_sitemap, APIException 
@@ -26,10 +26,12 @@ from config import ApplicationConfig
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, unset_jwt_cookies, get_jwt
 
 import joblib
 import pandas as pd
+import csv
+import io
 ## ==============================|| FLASK - BACKEND ||============================== ##
 
 app = Flask(__name__)
@@ -45,6 +47,7 @@ server_session = Session(app)
 CORS(app, supports_credentials=True)
 
 db.init_app(app)  
+admin.init_app(app)
 with app.app_context():
     db.create_all()
 
@@ -54,50 +57,247 @@ migrate = Migrate(app,db)
 model = joblib.load('Models\Xgboost_model.joblib')
 
 #_________________________________________________
-
-# Middleware to check if user is authenticated
-# def login_required(f):
-#     @wraps(f)
-#     def decorated_function(*args, **kwargs):
-#         if 'user_id' not in session:
-#             return jsonify({"error": "Unauthorized"}), 401
-#         return f(*args, **kwargs)
-#     return decorated_function
+#                 GET ALL USERS
+#_________________________________________________
+@app.route('/users', methods=['GET'])
+def get_users():
+    users = User.query.all()
+    return jsonify([user_to_dict(user) for user in users])
 
 #_________________________________________________
+#                   GET USER
 #_________________________________________________
-# Dashboard route accessible only if user is authenticated
-# @app.route("/dashboard/default")
-# #@login_required
-# def dashboard_username():
-#     user_id = session.get('user_id')
-    
-#     if not user_id:
-#         return jsonify({"error": "Unauthorized Access"}), 401
-    
-#     user = User.query.filter_by(id=user_id).first()
-    
-#     if not user:
-#         return jsonify({"error": "User not found"}), 404
-    
-#     return jsonify({
-#         "id": user.id, 
-#         "firstname": "user.firstname"
-#     })
+@app.route('/users/<user_id>', methods=['GET'])
+def get_user(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify(user_to_dict(user))
 
-@app.route("/info")
-def Get_Current_User():
-    user_id=session.get('user_id')
-
-    if not user_id:
-        return jsonify({'error': 'Unauthorized '}), 401
-
-    user= User.query.filter_by(id=user_id).first()
+#_________________________________________________
+#                  CREATE USER
+#_________________________________________________
+@app.route('/users', methods=['POST'])
+def create_user():
+    firstname = request.json["firstname"]
+    lastname = request.json["lastname"]
+    email = request.json["email"]
+    password = request.json["password"]
+    role_id = request.json["role_id"]
+ 
+    user_exists = User.query.filter_by(email=email).first() is not None
+ 
+    if user_exists:
+        return jsonify({"error": "Email already exists"}), 409
+     
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     
-    return jsonify({
-        "id": user.id,
-        "email": user.email
-    })
+    role = Role.query.get(role_id)
+    if not role:
+        return jsonify({"error": "Role not found"}), 404
+    
+    new_user = User(firstname=firstname, lastname=lastname, email=email, password=hashed_password, role_id=role_id)
+    db.session.add(new_user)
+    db.session.commit()
+    
+    return jsonify(user_to_dict(new_user)), 201
+
+#_________________________________________________
+#                  UPDATE USER
+#_________________________________________________
+@app.route('/users/<user_id>', methods=['PUT'])
+def update_user(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.json
+    user.firstname = data.get("firstname", user.firstname)
+    user.lastname = data.get("lastname", user.lastname)
+    user.email = data.get("email", user.email)
+    
+    if "password" in data and data["password"]:
+        hashed_password = bcrypt.generate_password_hash(data["password"]).decode('utf-8')
+        user.password = hashed_password
+    
+    if "role_id" in data:
+        role_id = data["role_id"]
+        role = Role.query.get(role_id)
+        if role:
+            user.role_id = role.id
+        else:
+            return jsonify({'error': 'Role not found'}), 404
+
+
+    db.session.commit()
+
+    return jsonify(user_to_dict(user)), 200
+
+#_________________________________________________
+#                  DELETE USER
+#_________________________________________________
+@app.route('/users/<user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+    db.session.delete(user)
+    db.session.commit()
+    return '', 204
+
+#_________________________________________________
+#             GET ALL EXISTING ROLES
+#_________________________________________________
+@app.route('/roles', methods=['GET'])
+def get_roles():
+    roles = Role.query.all()
+    return jsonify([role_to_dict(role) for role in roles])
+
+#_________________________________________________
+#                   GET ROLE
+#_________________________________________________
+@app.route('/roles/<role_id>', methods=['GET'])
+def get_role(role_id):
+    role = Role.query.get(role_id)
+    if role is None:
+        return jsonify({'error': 'Role not found'}), 404
+    return jsonify(role_to_dict(role))
+
+#_________________________________________________
+#               USER / ROLE DICTs
+#_________________________________________________
+def user_to_dict(user):
+    return {
+        'id': user.id,
+        'firstname': user.firstname,
+        'lastname': user.lastname,
+        'email': user.email,
+        'password': user.password,
+        'role': role_to_dict(user.role) if user.role else None
+    }
+
+def role_to_dict(role):
+    return {
+        'id': role.id,
+        'name': role.name
+    }
+
+#_________________________________________________
+#               UPLOAD DATASET
+#_________________________________________________
+# @app.route('/upload', methods=['POST'])
+# def upload_data():
+#     if 'file' not in request.files:
+#         return jsonify({'error': 'No file part'})
+
+#     file = request.files['file']
+
+#     if file.filename == '':
+#         return jsonify({'error': 'No selected file'})
+
+    
+#     if file and allowed_file(file.filename):
+#         try:
+#             # Read CSV file
+#             stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+#             csv_data = csv.reader(stream)
+            
+#             # Read headers
+#             headers = next(csv_data)
+#             print(headers)
+
+#             # Iterate over CSV rows and insert into database
+#             for row in csv_data:
+#                 insert_sql = f"INSERT INTO testdataset ({', '.join(headers)}) VALUES ({', '.join(['%s'] * len(row))})"
+#                 print(insert_sql)
+#                 db.engine.execute(insert_sql, row)
+            
+           
+            
+#             # Commit changes to the database
+#             db.session.commit()
+#             return jsonify({'success': 'File uploaded successfully and data inserted into database.'}), 200
+#         except Exception as e:
+#             return jsonify({'error': str(e)})
+#     else:
+#         return jsonify({'error': 'Invalid file type'})
+
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file part'})
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No selected file'})
+
+    if file and file.filename.endswith('.csv'):
+        # Read CSV file into a pandas DataFrame
+        df = pd.read_csv(file)
+        
+        # Mapping between CSV column names and database column names
+        column_mapping = {
+            'id_client': 'id_client',
+            'Phone_Number': 'phone_number',
+            'Tenure': 'tenure',
+            'Seg_Tenure': 'seg_tenure',
+            'Pasivity_G': 'pasivity_g',
+            'Value_Segment':'value_segment', 
+            'Tariff_Profile':'tariff_profile', 
+            'CNT_OUT_VOICE_ONNET_M6':'cnt_out_voice_onnet_m6', 
+            'CNT_OUT_VOICE_ONNET_M5':'cnt_out_voice_onnet_m5', 
+            'CNT_OUT_VOICE_OFFNET_M6':'cnt_out_voice_offnet_m6', 
+            'CNT_OUT_VOICE_OFFNET_M5':'cnt_out_voice_offnet_m5', 
+            'REV_OUT_VOICE_OFFNET_W4':'rev_out_voice_offnet_w4' ,
+            'TRAF_OUT_VOICE_OFFNET_W4':'traf_out_voice_offnet_w4' ,
+            'CNT_OUT_VOICE_ROAMING_W4':'cnt_out_voice_roaming_w4' ,
+            'REV_DATA_PAG_W4':'rev_data_pag_w4', 
+            'REV_REFILL_M5':'rev_refill_m5' ,
+            'CNT_REFILL_M6':'cnt_refill_m6' ,
+            'CNT_REFILL_M5':'cnt_refill_m5' ,
+            'CNT_REFILL_W4':'cnt_refill_w4' ,
+            'REV_REFILL_W4':'rev_refill_w4' ,
+            'FLAG_Inactive_3Days':'flag_inactive_3days' ,
+            'Count_Inactive_3Days':'count_inactive_3days' ,
+            'Count_Inactive_4Days':'count_inactive_4days' ,
+            'Count_Inactive_5Days':'count_inactive_5days' ,
+            'Count_Inactive_10Days_and_more':'count_inactive_10days_and_more' ,
+            'CONSUMER_TYPE_M5':'consumer_type_m5' ,
+            'CONSUMER_TYPE_M6':'consumer_type_m6' ,
+            'TRAF_IN_VOICE_ONNET_M5':'traf_in_voice_onnet_m5' ,
+            'CNT_IN_VOICE_INTERNATIONAL_M5':'cnt_in_voice_international_m5' ,
+            'CNT_IN_SMS_ONNET_M4':'cnt_in_sms_onnet_m4' ,
+            'TRAF_IN_VOICE_INTERNATIONAL_W4':'traf_in_voice_international_w4' ,
+            'CNT_IN_SMS_OFFNET_W4':'cnt_in_sms_offnet_w4' ,
+            'SLOPE_SD_VI_ONNET_DUR':'slope_sd_vi_onnet_dur' ,
+            'DEGREES_SD_VI_ONNET_DUR':'degrees_sd_vi_onnet_dur' ,
+            'SLOPE_VI_OFFNET_DUR':'slope_vi_offnet_dur' ,
+            'SLOPE_D__FREE_VOL':'slope_d__free_vol' ,
+            'Rev_Month_Before_Current_Month':'rev_month_before_current_month' ,
+            'TRAF_OUT_VOICE_ONNET_M6':'traf_out_voice_onnet_m6',
+            'TRAF_OUT_VOICE_ONNET_M4':'traf_out_voice_onnet_m4',
+            'TRAF_OUT_VOICE_ONNET_M3':'traf_out_voice_onnet_m3',
+            'REV_BUNDLE_M6':'rev_bundle_m6',
+            'TRAF_OUT_VOICE_ONNET_W4':'traf_out_voice_onnet_w4',
+            'CNT_OUT_VOICE_ONNET_W4':'cnt_out_voice_onnet_w4',
+            'SLOPE_V_ONNET_DUR':'slope_v_onnet_dur',
+            'SLOPE_SD_VI_OFFNET_DUR':'slope_sd_vi_offnet_dur',
+            'flag':'flag'
+        }
+
+        # Rename DataFrame columns to match database column names
+        df.rename(columns=column_mapping, inplace=True)
+
+    # Insert data into the database
+        try:
+            with engine.connect() as connection:
+                df.to_sql('testdataset', con=connection, if_exists='append', index=False)
+            return jsonify({'success': True, 'message': 'File uploaded successfully'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)})
+
+
 
 #_________________________________________________
 #             Dashboard first row
@@ -165,11 +365,10 @@ def predict_dataset():
         y_pred = model.predict(X)
         predicted_probabilities = model.predict_proba(X)
        
-        predicted_proba_df = pd.DataFrame(predicted_probabilities, columns=[f'Prob_{i}' for i in range(predicted_probabilities.shape[1])])
+        predicted_proba_df = pd.DataFrame(predicted_probabilities, columns=[f'prob_{i}' for i in range(predicted_probabilities.shape[1])])
         
         df['pred_flag'] = y_pred
         df = pd.concat([df, predicted_proba_df], axis=1)
-        print(df)
         
         # Convert DataFrame to SQLAlchemy table and create view
         metadata = MetaData()
@@ -220,9 +419,14 @@ def predict_dataset():
             Column('SLOPE_SD_VI_OFFNET_DUR', Float),
             Column('flag', Integer),
             Column('pred_flag', Integer),
-            Column('predicted_probabilities', Float)
+            Column('prob_0', Float),
+            Column('prob_1', Float)
         )
 
+        # Drop the table if it exists and recreate it
+        inspector = inspect(engine)
+        if inspector.has_table('client_data_predictions'):
+            client_data_table.drop(engine)
         metadata.create_all(engine)
 
         # Insert the data from the DataFrame into the table
@@ -231,8 +435,9 @@ def predict_dataset():
     return y_pred
  
 predict_dataset()
-  
+
 @app.route('/dashboard/analytics', methods=["GET"])
+@jwt_required()
 def get_analytics():
     try:
         with app.app_context():
@@ -255,8 +460,8 @@ def get_analytics():
             'totalCount': int(total_count),
             'churnersCount': int(churners_count),
             'nonChurnersCount': int(non_churners_count),
-            'churnersPercentage': float(churners_percentage),
-            'nonChurnersPercentage': round(float(non_churners_percentage), 3)
+            'churnersPercentage': round(float(churners_percentage), 2),
+            'nonChurnersPercentage': round(float(non_churners_percentage), 2)
         }
 
         return jsonify(analytics_data), 200
@@ -271,36 +476,62 @@ def get_analytics():
 @app.route('/dashboard/linechartdata', methods=['GET'])
 def get_line_chart_data():
     try:
-        # Retrieve the interval from the query parameters
+        # # Retrieve the interval from the query parameters
         interval = request.args.get('interval', 'day')
 
-        # Set the default date format and interval for the query
-        date_format = "%Y-%m-%d"
-        interval_func = func.date_trunc('day', ChrunTrend.churn_date)
+        # # Set the default date format and interval for the query
+        # date_format = "%Y-%m-%d"
+        # interval_func = func.date_trunc('day', ChrunTrend.churn_date)
         
-        # Adjust the interval and date format for month aggregation
-        if interval == 'month':
-            date_format = "%Y-%m"
-            interval_func = func.date_trunc('month', ChrunTrend.churn_date)
+        # # Adjust the interval and date format for month aggregation
+        # if interval == 'month':
+        #     date_format = "%Y-%m"
+        #     interval_func = func.date_trunc('month', ChrunTrend.churn_date)
         
-        # Query the database based on the specified interval
-        churn_data = db.session.query(interval_func.label('interval'), func.sum(ChrunTrend.churnernumber).label('total_churner_number')) \
-            .group_by(interval_func) \
-            .order_by(interval_func) \
-            .all()
+        # # Query the database based on the specified interval
+        # churn_data = db.session.query(interval_func.label('interval'), func.sum(ChrunTrend.churnernumber).label('total_churner_number')) \
+        #     .group_by(interval_func) \
+        #     .order_by(interval_func) \
+        #     .all()
+            
+        
+        with app.app_context():
+            if interval == 'month':
+                sql_query =""" 
+                        SELECT 
+                            date_trunc('month', date_churn) AS month,
+                            COUNT(*) AS churner_number
+                        FROM clientdataset
+                        WHERE flag = 1
+                        GROUP BY month
+                        ORDER BY month;
+                """
+            else : 
+                sql_query =""" 
+                        SELECT 
+                            date_trunc('week', date_churn) AS week,
+                            COUNT(*) AS churner_number
+                        FROM clientdataset
+                        WHERE flag = 1
+                        GROUP BY week
+                        ORDER BY week;
+                """
 
-
+            with db.engine.connect() as connection:
+                    churn_data = connection.execute(text(sql_query)).fetchall()
+                
         # Format the data as per the interval
-        formatted_data = [{'ChurnDate': date.strftime(date_format), 'ChurnerNumber': churner_number}
-                          for date, churner_number in churn_data]
-
+        formatted_data = [{
+            'ChurnDate': date, 
+            'ChurnerNumber': churner_number}
+            for date, churner_number in churn_data]
+        
         return jsonify(formatted_data), 200
     except Exception as e:
         print('Error fetching line chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
 # Donut Chart : Churn Per Value Segment 
-
 @app.route('/dashboard/donutchartdata', methods=['GET'])
 def get_donut_chart_data():
     try:
@@ -326,17 +557,37 @@ def get_donut_chart_data():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 
-
 #______________________________________________________
 #               Dashboard third row
 #______________________________________________________
 @app.route('/dashboard/tabledata', methods=['GET'])
 def get_table_data():
     try:
-        
-        
-        
-        return jsonify("result"), 200
+        with app.app_context():
+            sql_query = """
+                SELECT cdp.id_client, cdp.phone_number, sg.seg_Tenure, ss.value_segment, p.tariff_profile, pred_flag
+                FROM client_data_predictions cdp, Segment_tenure sg, Sous_segment ss, Profiles p
+                WHERE   pred_flag = 1 
+                        and cdp."Seg_Tenure" = sg.id_tenure 
+                        and cdp."Value_Segment" = ss.id_segment
+                        and cdp."Tariff_profile" = p.id_profile ;
+            """
+            with db.engine.connect() as connection:
+                result = connection.execute(text(sql_query)).fetchall()
+
+        # Format the result as a list of dictionaries
+        formatted_result = []
+        for row in result:
+            formatted_result.append({
+                'id_client': row[0],
+                'phone_number': row[1],
+                'seg_tenure': row[2],
+                'value_segment': row[3],
+                'tariff_profile': row[4],
+                'pred_flag': row[5]
+            })
+
+        return jsonify(formatted_result), 200
     except Exception as e:
         print('Error fetching table data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
@@ -349,85 +600,42 @@ def get_table_data():
 @app.route('/dashboard/columnchartdata', methods=['GET'])
 def get_column_chart_data_tarif():
     try:
-        client_infos = ClientInfos.query.all()
-        
+        with app.app_context():
+            sql_query = """
+                SELECT "Tariff_profile", pred_flag
+                FROM client_data_predictions;
+            """
+            with db.engine.connect() as connection:
+                result = connection.execute(text(sql_query)).fetchall()
+
         data = []
-        for client in client_infos:
+        for row in result:
             data.append({
-                'Tenure': client.tenure,
-                'Seg_Tenure': client.seg_tenure,
-                'Pasivity_G': client.pasivity_g,
-                'Value_Segment': client.value_segment,
-                'Tariff_Profile': client.tariff_profile,
-                'CNT_OUT_VOICE_ONNET_M6': client.cnt_out_voice_onnet_m6,
-                'CNT_OUT_VOICE_ONNET_M5': client.cnt_out_voice_onnet_m5,
-                'CNT_OUT_VOICE_OFFNET_M6': client.cnt_out_voice_offnet_m6,
-                'CNT_OUT_VOICE_OFFNET_M5': client.cnt_out_voice_offnet_m5,
-                'REV_OUT_VOICE_OFFNET_W4': client.rev_out_voice_offnet_w4,
-                'TRAF_OUT_VOICE_OFFNET_W4': client.traf_out_voice_offnet_w4,
-                'CNT_OUT_VOICE_ROAMING_W4': client.cnt_out_voice_roaming_w4,
-                'REV_DATA_PAG_W4': client.rev_data_pag_w4,
-                'REV_REFILL_M5': client.rev_refill_m5,
-                'CNT_REFILL_M6': client.cnt_refill_m6,
-                'CNT_REFILL_M5': client.cnt_refill_m5,
-                'CNT_REFILL_W4': client.cnt_refill_w4,
-                'REV_REFILL_W4': client.rev_refill_w4,
-                'FLAG_Inactive_3Days': client.flag_inactive_3days,
-                'Count_Inactive_3Days': client.count_inactive_3days,
-                'Count_Inactive_4Days': client.count_inactive_4days,
-                'Count_Inactive_5Days': client.count_inactive_5days,
-                'Count_Inactive_10Days_and_more': client.count_inactive_10days_and_more,
-                'CONSUMER_TYPE_M5': client.consumer_type_m5,
-                'CONSUMER_TYPE_M6': client.consumer_type_m6,
-                'TRAF_IN_VOICE_ONNET_M5': client.traf_in_voice_onnet_m5,
-                'CNT_IN_VOICE_INTERNATIONAL_M5': client.cnt_in_voice_international_m5,
-                'CNT_IN_SMS_ONNET_M4': client.cnt_in_sms_onnet_m4,
-                'TRAF_IN_VOICE_INTERNATIONAL_W4': client.traf_in_voice_international_w4,
-                'CNT_IN_SMS_OFFNET_W4': client.cnt_in_sms_offnet_w4,
-                'SLOPE_SD_VI_ONNET_DUR': client.slope_sd_vi_onnet_dur,
-                'DEGREES_SD_VI_ONNET_DUR': client.degrees_sd_vi_onnet_dur,
-                'SLOPE_VI_OFFNET_DUR': client.slope_vi_offnet_dur,
-                'SLOPE_D__FREE_VOL': client.slope_d__free_vol,
-                'Rev_Month_Before_Current_Month': int(client.rev_month_before_current_month),
-                'TRAF_OUT_VOICE_ONNET_M6': client.traf_out_voice_onnet_m6,
-                'TRAF_OUT_VOICE_ONNET_M4': client.traf_out_voice_onnet_m4,
-                'TRAF_OUT_VOICE_ONNET_M3': client.traf_out_voice_onnet_m3,
-                'REV_BUNDLE_M6': client.rev_bundle_m6,
-                'TRAF_OUT_VOICE_ONNET_W4': client.traf_out_voice_onnet_w4,
-                'CNT_OUT_VOICE_ONNET_W4': client.cnt_out_voice_onnet_w4,
-                'SLOPE_V_ONNET_DUR': client.slope_v_onnet_dur,
-                'SLOPE_SD_VI_OFFNET_DUR': client.slope_sd_vi_offnet_dur
+                'Tariff_Profile': row[0],
+                'pred_flag': row[1]
             })
-        
+
         df = pd.DataFrame(data)
-        
-        # Perform prediction
-        X = df.drop(columns=['Tariff_Profile'])
-        y_pred = model.predict(X)
-        
-        # Add predictions to the DataFrame
-        df['flag'] = y_pred
-        
+
         # Query profiles from the database
         profiles = Profiles.query.all()
-        
+
         # Create a mapping of tariff profile IDs to names
         profile_mapping = {profile.id_profile: profile.tariff_profile for profile in profiles}
-        
-        
+
         # Replace tariff profile IDs with names in the DataFrame
         df['Tariff_Profile'] = df['Tariff_Profile'].map(profile_mapping)
-        
+
         # Group by tariff profile and calculate churner and non-churner counts
-        grouped = df.groupby('Tariff_Profile').flag.value_counts().unstack(fill_value=0)
+        grouped = df.groupby('Tariff_Profile').pred_flag.value_counts().unstack(fill_value=0)
         grouped.columns = ['nonchurnersCount', 'churnersCount']  # Rename columns for clarity
         grouped = grouped.reset_index()
-        
+
         # Format the data for JSON response
         formatted_data = grouped.to_dict(orient='records')
-        
+
         print(formatted_data)
-        
+
         return jsonify(formatted_data), 200
     except Exception as e:
         print('Error fetching column chart data:', e)
@@ -438,23 +646,26 @@ def get_column_chart_data_tarif():
 @app.route('/dashboard/maxchurnprofile', methods=['GET'])
 def get_max_churn_profile():
     try:
-        data = db.session.query(
-            Profiles.tariff_profile.label('tariff_profile'),
-            func.sum(case((ClientInfos.flag == 1, 1), else_=0)).label('churnersCount')
-        ).join(Profiles, ClientInfos.tariff_profile_id == Profiles.id_profile)\
-         .group_by(Profiles.tariff_profile)\
-         .order_by(func.sum(case((ClientInfos.flag == 1, 1), else_=0)).desc())\
-         .first()
+        with app.app_context():
+            sql_query = """
+                SELECT "Tariff_profile", SUM(CASE WHEN flag = 1 THEN 1 ELSE 0 END) AS churnersCount
+                FROM client_data_predictions
+                GROUP BY "Tariff_profile"
+                ORDER BY churnersCount DESC
+                LIMIT 1;
+            """
+            with db.engine.connect() as connection:
+                result = connection.execute(text(sql_query)).fetchone()
         
-        if data:
-            result = {
-                'tariff_profile': data.tariff_profile,
-                'churnersCount': data.churnersCount
+        if result:
+            response = {
+                'tariff_profile': result[0],
+                'churnersCount': result[1] 
             }
         else:
-            result = {'tariff_profile': None, 'churnersCount': 0}
+            response = {'tariff_profile': None, 'churnersCount': 0}
         
-        return jsonify(result), 200
+        return jsonify(response), 200
     except Exception as e:
         print('Error fetching max churn profile:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
@@ -463,7 +674,6 @@ def get_max_churn_profile():
 #______________________________________________________
 #                     Segment Page
 #______________________________________________________
-#_________________________________________________
 @app.route('/Segments', methods=['GET'])
 def get_segments_chart_data():
     try:
@@ -500,11 +710,12 @@ def get_segments_chart_data():
     except Exception as e:
         print('Error fetching donut chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
+    
+    
 #Segment_tenure
 @app.route('/TenureSegments', methods=['GET'])
 def get_tenure_segments_chart_data():
     try:
-        # Write your SQL query here to calculate churners and non-churners for each tenure segment
         sql_query = """          
             SELECT 
                 t.seg_tenure,
@@ -514,14 +725,10 @@ def get_tenure_segments_chart_data():
             JOIN client_data_predictions cdp ON cdp."Seg_Tenure" = t.id_tenure
             GROUP BY t.seg_tenure
         """
-
-        # Execute the raw SQL query within the context of the Flask application
+        
         result = db.session.execute(text(sql_query))
         
-        # Fetch all rows from the result
         rows = result.fetchall()
-
-        # Process the rows into the desired format
         data_2 = [
             {
                 'tenureSegment': row[0],
@@ -531,8 +738,6 @@ def get_tenure_segments_chart_data():
             for row in rows
         ]
         
-        # Print the raw rows and the processed data to the console for debugging
-        print('Raw rows:', rows)
         print('Processed data:', data_2)
 
         return jsonify(data_2), 200
@@ -544,7 +749,6 @@ def get_tenure_segments_chart_data():
 #______________________________________________________
 #                     Uplift Page
 #______________________________________________________
-#_________________________________________________
 # Predict all dataset and calculate uplift
 def uplift_method():
     client_infos = ClientInfos.query.all()
@@ -679,16 +883,26 @@ def download_decile():
 #               Prediction Form 
 #_________________________________________________
 @app.route("/prediction", methods=["POST"])
-def predict_custumer():
-    try: 
+def predict_customer():
+    try:
         id_client = request.json["idClient"]
-  
+        phonenumber = request.json["phonenumber"]
+
         client = ClientInfos.query.filter_by(id_client=id_client).first()
-  
+
         if client is None:
             return jsonify({"error": "ID Client doesn't exist"}), 401
-        
-        # Convert client data to a pandas DataFrame
+
+        db_phone_number = str(client.phone_number).strip()
+        input_phone_number = str(phonenumber).strip()
+
+        # Print for debugging
+        print(f"DB Phone Number: {db_phone_number} (Type: {type(db_phone_number)})")
+        print(f"Input Phone Number: {input_phone_number} (Type: {type(input_phone_number)})")
+
+        if db_phone_number != input_phone_number:
+            return jsonify({"error": "Phone number does not match the ID Client"}), 401
+
         client_data_dict = {
             "Tenure": client.tenure,
             "Seg_Tenure": client.seg_tenure,
@@ -733,24 +947,33 @@ def predict_custumer():
             "SLOPE_V_ONNET_DUR": client.slope_v_onnet_dur,
             "SLOPE_SD_VI_OFFNET_DUR": client.slope_sd_vi_offnet_dur,
         }
-        
-        client_data_df = pd.DataFrame([client_data_dict])
-        print(client_data_df)
 
-        # Predict with the client infromations 
+        client_data_df = pd.DataFrame([client_data_dict])
+
+        # Predict with the client information
         prediction = model.predict(client_data_df)
-        print(prediction.tolist())
-        
         prediction_proba = model.predict_proba(client_data_df)
-        
-        # Assuming the positive class (churn) is the second column
+
         churn_probability = round(prediction_proba[0][1] * 100, 2)
-        
-        # Get result 
+
+        # Get result
         return jsonify({'prediction': prediction.tolist(), 'probability': churn_probability})
     except Exception as e:
         print('Error fetching client data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
+
+
+@app.route('/client-data', methods=['GET'])
+def get_client_data():
+    try:
+        clients = ClientInfos.query.with_entities(ClientInfos.id_client, ClientInfos.phone_number).all()
+        client_data = [{"id_client": client.id_client, "phone_number": client.phone_number} for client in clients]
+        return jsonify(client_data), 200
+    except Exception as e:
+        print('Error fetching client data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
 
 #_________________________________________________
 #             Registration Form 
@@ -784,33 +1007,59 @@ def register():
 #_________________________________________________
 @app.route("/login", methods=["POST"])
 def login_user():
-    email = request.json["email"]
-    password = request.json["password"]
-  
-    user = User.query.filter_by(email=email).first()
-  
-    if user is None:
-        return jsonify({"error": "Unauthorized Access"}), 401
-  
-    if not bcrypt.check_password_hash(user.password, password):
-        return jsonify({"error": "Unauthorized"}), 401
-      
-    session["user_id"] = user.id
-    access_token = create_access_token(identity=email)
-    
-    return jsonify(access_token=access_token)
+    try:
+        email = request.json["email"]
+        password = request.json["password"]
+        user = User.query.filter_by(email=email).first()
+
+        if user is None:
+            return jsonify({"error": "Unauthorized Access"}), 401
+
+        if not bcrypt.check_password_hash(user.password, password):
+            return jsonify({"error": "Unauthorized"}), 401
+
+        session["user_id"] = user.id
+        print("User ID set in session:", session.get("user_id"))
+        
+        role_name = user.role.name
+        print(role_name)
+        # Generate token
+        token = create_access_token(identity=user.email)
+
+        return jsonify({'access_token': token, 'role': role_name, 'firstname': user.firstname})
+    except Exception as e:
+        print('Error login:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
 #_________________________________________________
-#                   Logout
+#                   Logout Form
 #_________________________________________________
 @app.route("/logout", methods=["POST"])
-def logout_user():
-    session.pop("user_id")
-    return "200"
+@jwt_required()
+def logout():
+    session.pop("user_id", None)
+    response = jsonify({"msg": "logout successful"})
+    unset_jwt_cookies(response)
+    return response
 
 
 #_________________________________________________
-#                  
+#                  Get User Infos
 #_________________________________________________
+@app.route("/protected")
+@jwt_required()
+def protected():
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(email=current_user).first()
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    
+    return jsonify({
+        "firstname": user.firstname,
+        "role": user.role.name
+    }), 200
+
 ## ====================================================================================== ##
 if __name__ == "__main__":
     app.run(debug=True)

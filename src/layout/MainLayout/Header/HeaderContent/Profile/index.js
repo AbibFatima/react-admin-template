@@ -3,31 +3,17 @@ import { useRef, useState, useEffect } from 'react';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
-import {
-  Avatar,
-  Box,
-  ButtonBase,
-  CardContent,
-  ClickAwayListener,
-  Grid,
-  IconButton,
-  Paper,
-  Popper,
-  Stack,
-  Tab,
-  Tabs,
-  Typography
-} from '@mui/material';
+import { Avatar, Box, ButtonBase, CardContent, ClickAwayListener, Grid, IconButton, Paper, Popper, Stack, Typography } from '@mui/material';
 
 // project import
 import MainCard from 'components/MainCard';
 import Transitions from 'components/@extended/Transitions';
-import ProfileTab from './ProfileTab';
-import SettingTab from './SettingTab';
 
 // assets
 import avatar1 from 'assets/images/users/avatar-1.png';
-import { LogoutOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
+import { LogoutOutlined } from '@ant-design/icons';
+
+import secureLocalStorage from 'react-secure-storage';
 
 // tab panel wrapper
 function TabPanel({ children, value, index, ...other }) {
@@ -44,30 +30,45 @@ TabPanel.propTypes = {
   value: PropTypes.any.isRequired
 };
 
-function a11yProps(index) {
-  return {
-    id: `profile-tab-${index}`,
-    'aria-controls': `profile-tabpanel-${index}`
-  };
-}
+// function a11yProps(index) {
+//   return {
+//     id: `profile-tab-${index}`,
+//     'aria-controls': `profile-tabpanel-${index}`
+//   };
+// }
 
 // ==============================|| HEADER CONTENT - PROFILE ||============================== //
 
 const Profile = () => {
   const theme = useTheme();
 
-  const [logoutError, setLogoutError] = useState('');
   const handleLogout = async () => {
+    const token = secureLocalStorage.getItem('token');
+
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
     try {
       const response = await fetch('//localhost:5000/logout', {
-        method: 'POST'
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
       });
 
-      if (response.ok) {
-        setLogoutError('');
-        window.location.href = '/login';
-      } else {
+      if (!response.ok) {
         alert('Error logging out !');
+      } else {
+        setUserInfo({ firstname: '', role: '' });
+        secureLocalStorage.removeItem('token');
+        secureLocalStorage.removeItem('name');
+        secureLocalStorage.removeItem('admin');
+        secureLocalStorage.removeItem('specialist');
+        secureLocalStorage.clear();
+        window.location.href = '/login';
       }
     } catch (error) {
       console.error('Error logging out:', error);
@@ -87,53 +88,40 @@ const Profile = () => {
     setOpen(false);
   };
 
-  const [value, setValue] = useState(0);
-
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
-
   const iconBackColorOpen = 'grey.300';
 
-  // const [user, setUser] = useState({});
-
-  // useEffect(() => {
-  //   fetch('//localhost:5000/dashboard/default')
-  //     .then((response) => {
-  //       if (!response.ok) {
-  //         throw new Error(`HTTP error! Status: ${response.status}`);
-  //       }
-  //       return response.json();
-  //     })
-  //     .then((data) => setUser(data))
-  //     .catch((error) => console.error('Error fetching user data:', error));
-  // }, []);
-
-  const [user, setUser] = useState({
-    // id: '',
-    // email: ''
-  });
+  const [userInfo, setUserInfo] = useState({ firstname: '', role: '' });
 
   useEffect(() => {
+    const fetchUserInfo = async () => {
+      const token = secureLocalStorage.getItem('token');
+
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:5000/protected', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user info');
+        }
+
+        const data = await response.json();
+        setUserInfo({ firstname: data.firstname, role: data.role });
+      } catch (err) {
+        console.error('Error fetching user info:', err);
+      }
+    };
     fetchUserInfo();
   }, []);
-
-  const fetchUserInfo = async () => {
-    try {
-      const response = await fetch('//localhost:5000/info', {
-        method: 'GET',
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      } else {
-        const data = await response.json();
-        setUser(data);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
 
   return (
     <Box sx={{ flexShrink: 0, ml: 0.75 }}>
@@ -153,8 +141,9 @@ const Profile = () => {
         <Stack direction="row" spacing={2} alignItems="center" sx={{ p: 0.5 }}>
           <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
           <Typography variant="subtitle1">
-            {/* {typeof user.firstname === 'string' ? user.firstname.charAt(0).toUpperCase() + user.firstname.slice(1) : user.firstname} */}
-            {user.email}
+            {typeof userInfo.firstname === 'string'
+              ? userInfo.firstname.charAt(0).toUpperCase() + userInfo.firstname.slice(1)
+              : userInfo.firstname}
           </Typography>
         </Stack>
       </ButtonBase>
@@ -199,25 +188,22 @@ const Profile = () => {
                             <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
                             <Stack>
                               <Typography variant="h6">
-                                {typeof user.firstname === 'string'
-                                  ? user.firstname.charAt(0).toUpperCase() + user.firstname.slice(1)
-                                  : user.firstname}
+                                {typeof userInfo.firstname === 'string'
+                                  ? userInfo.firstname.charAt(0).toUpperCase() + userInfo.firstname.slice(1)
+                                  : userInfo.firstname}
                               </Typography>
-                              <Typography variant="body2" color="textSecondary">
-                                UI/UX Designer
-                              </Typography>
+                              <Typography variant="subtitle1">{userInfo.role}</Typography>
                             </Stack>
                           </Stack>
                         </Grid>
                         <Grid item>
                           <IconButton size="large" color="secondary" onClick={handleLogout}>
-                            {logoutError}
                             <LogoutOutlined />
                           </IconButton>
                         </Grid>
                       </Grid>
                     </CardContent>
-                    {open && (
+                    {/* {open && (
                       <>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                           <Tabs variant="fullWidth" value={value} onChange={handleChange} aria-label="profile tabs">
@@ -254,7 +240,7 @@ const Profile = () => {
                           <SettingTab />
                         </TabPanel>
                       </>
-                    )}
+                    )} */}
                   </MainCard>
                 </ClickAwayListener>
               </Paper>

@@ -1,11 +1,10 @@
 import React from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 
 // material-ui
 import {
   Button,
   Checkbox,
-  //Divider,
   FormControlLabel,
   FormHelperText,
   Grid,
@@ -28,12 +27,14 @@ import AnimateButton from 'components/@extended/AnimateButton';
 // assets
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 
-// ============================|| LOGIN ||============================ //
+// react-secure-storage
+import secureLocalStorage from 'react-secure-storage';
 
 const AuthLogin = () => {
   const [checked, setChecked] = React.useState(false);
-
   const [showPassword, setShowPassword] = React.useState(false);
+  const navigate = useNavigate();
+
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -46,8 +47,8 @@ const AuthLogin = () => {
     <>
       <Formik
         initialValues={{
-          email: 'info@djezzy.dz',
-          password: '123456',
+          email: '',
+          password: '',
           submit: null
         }}
         validationSchema={Yup.object().shape({
@@ -65,21 +66,29 @@ const AuthLogin = () => {
             });
 
             if (response.ok) {
-              setStatus({ success: true });
-              setSubmitting(true);
               const data = await response.json();
-              localStorage.setItem('token', data.access_token);
+              console.log(data.access_token);
+              secureLocalStorage.setItem('token', data.access_token);
+              secureLocalStorage.setItem('name', data.firstname);
 
-              window.location.href = '/dashboard/default';
-            } else {
-              if (response.status === 401) {
-                const data = 'Invalid credentials';
-                setErrors({ submit: data });
-                alert('Invalid credentials');
+              if (data.role.includes('Admin')) {
+                secureLocalStorage.setItem('admin', true);
+                navigate('/admin/dashboard');
+              } else if (data.role.includes('Specialist')) {
+                secureLocalStorage.setItem('specialist', true);
+                navigate('/dashboard/default');
               }
+
+              setStatus({ success: true });
+              setSubmitting(false);
+            } else {
+              const errorData = await response.json();
+              setErrors({ submit: errorData.message || 'Invalid credentials' });
+              setStatus({ success: false });
+              setSubmitting(false);
             }
           } catch (error) {
-            console.log('Error:', error);
+            console.error('Error:', error);
             setErrors({ submit: error.message });
             setStatus({ success: false });
             setSubmitting(false);
@@ -116,7 +125,7 @@ const AuthLogin = () => {
                   <OutlinedInput
                     fullWidth
                     error={Boolean(touched.password && errors.password)}
-                    id="-password-login"
+                    id="password-login"
                     type={showPassword ? 'text' : 'password'}
                     value={values.password}
                     name="password"
@@ -157,14 +166,13 @@ const AuthLogin = () => {
                         size="small"
                       />
                     }
-                    label={<Typography variant="h6">Keep me sign in</Typography>}
+                    label={<Typography variant="h6">Keep me signed in</Typography>}
                   />
                   <Link variant="h6" component={RouterLink} to="" color="text.primary">
                     Forgot Password?
                   </Link>
                 </Stack>
               </Grid>
-              {/*** Showing errors ***/}
               {errors.submit && (
                 <Grid item xs={12}>
                   <FormHelperText error>{errors.submit}</FormHelperText>

@@ -1,6 +1,6 @@
 // project import
-import pages from './pages';
 import dashboard from './dashboard';
+import pages from './pages';
 import utilities from './utilities';
 
 // ==============================|| MENU ITEMS ||============================== //
@@ -8,5 +8,5 @@ import utilities from './utilities';
 const menuItems = {
   items: [dashboard, pages, utilities]
 };
-//, utilities, support
+
 export default menuItems;

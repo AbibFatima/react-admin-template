@@ -7,9 +7,9 @@ import { useTheme } from '@mui/material/styles';
 import { Box, Toolbar, useMediaQuery } from '@mui/material';
 
 // project import
-import Drawer from './Drawer';
-import Header from './Header';
-import navigation from 'menu-items/default';
+import Drawer from '../AdminLayout/Drawer';
+import Header from '../MainLayout/Header';
+import navigation from 'menu-items/admin';
 import Breadcrumbs from 'components/@extended/Breadcrumbs';
 
 // types
@@ -17,7 +17,7 @@ import { openDrawer } from 'store/reducers/menu';
 
 // ==============================|| MAIN LAYOUT ||============================== //
 
-const MainLayout = () => {
+const AdminLayout = () => {
   const theme = useTheme();
   const matchDownLG = useMediaQuery(theme.breakpoints.down('lg'));
   const dispatch = useDispatch();
@@ -57,4 +57,4 @@ const MainLayout = () => {
   );
 };
 
-export default MainLayout;
+export default AdminLayout;
