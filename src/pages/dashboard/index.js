@@ -30,6 +30,8 @@ import AnalyticEcommerce from 'components/cards/statistics/AnalyticEcommerce';
 import TariffProfilColumnChart from './TariffProfilColumnChart';
 import ChurnersTable from './ChurnersTable';
 
+import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
+
 // sales report status
 // const status = [
 //   {
@@ -109,6 +111,30 @@ const DashboardDefault = () => {
     fetchData();
   }, []);
 
+  const handleUpdateDataset = async () => {
+    try {
+      const response = await fetch('//localhost:5000/updatedateset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update dataset');
+      }
+
+      const result = await response.json();
+      console.log(result.message);
+      window.location.reload();
+      // Optionally, you can refresh the data after the dataset update
+      fetchData();
+      fetchMaxChurnersData();
+    } catch (error) {
+      console.error('Error updating dataset:', error);
+    }
+  };
+
   return (
     <Grid container rowSpacing={4.5} columnSpacing={2.75}>
       {/* row 1 */}
@@ -135,6 +161,13 @@ const DashboardDefault = () => {
           color="success"
         />
       </Grid>
+      <Grid item xs={12} sm={6} md={4} lg={3}>
+        <Box mt={5} display="flex" justifyContent="space-around" flexWrap="wrap">
+          <Button size="large" variant="contained" color="primary" onClick={handleUpdateDataset} startIcon={<RefreshOutlinedIcon />}>
+            Actualiser Dashboard
+          </Button>
+        </Box>
+      </Grid>
       <Grid item md={8} sx={{ display: { sm: 'none', md: 'block', lg: 'none' } }} />
 
       {/* row 2 */}
@@ -151,7 +184,7 @@ const DashboardDefault = () => {
                 color={slot === 'day' ? 'primary' : 'secondary'}
                 variant={slot === 'day' ? 'outlined' : 'text'}
               >
-                Day
+                Week
               </Button>
               <Button
                 size="small"

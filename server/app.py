@@ -271,6 +271,18 @@ def upload_file():
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)})
 
+#_________________________________________________
+#          UPDATE TO THE NEW DATASET 
+#_________________________________________________
+@app.route('/updatedateset', methods=["POST"])
+def update_dataset():
+    try:
+        predict_dataset()
+
+        return jsonify({'message':'dataset updated succefully '}), 200
+    except Exception as e:
+        print('Error fetching analytics data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 
 #_________________________________________________
@@ -813,6 +825,10 @@ def uplift_method():
     for i in range(10):
         deciles_data[i] = combined_df_sorted[combined_df_sorted['Percentile'] == i]
     
+    print(churners_per_decile)
+    print(deciles_data)
+    
+    
     return churners_per_decile, deciles_data
 
 
@@ -827,31 +843,35 @@ def get_column_chart_data():
 
 
 
-
 @app.route('/download-decile', methods=['GET'])
 def download_decile():
     try:
-        _, deciles_data = uplift_method()
+        decile = int(request.args.get('decile'))
+        if decile < 1 or decile > 10:
+            return jsonify({'error': 'Invalid decile number'}), 400
 
-        # Extract the required decile 1 data
-        decile_1_data = deciles_data[0]
+        churners_per_decile, deciles_data = uplift_method()
+        
+        # Extract the required decile data
+        decile_data = deciles_data[decile - 1]
 
         # Select the relevant columns
         selected_columns = ['id_client', 'phone_number', 'Tariff_Profile', 'Seg_Tenure', 'Value_Segment', 'flag', 'True_Label', 'Pred_Label']
-        decile_1_data_selected = decile_1_data[selected_columns]
+        decile_data_selected = decile_data[selected_columns]
 
         # Convert DataFrame to CSV
-        csv_data = decile_1_data_selected.to_csv(index=False)
+        csv_data = decile_data_selected.to_csv(index=False)
 
         # Create a response object with CSV data
         response = make_response(csv_data)
-        response.headers['Content-Disposition'] = 'attachment; filename=decile_1_data.csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=decile_{decile}_data.csv'
         response.headers['Content-Type'] = 'text/csv'
 
         return response
     except Exception as e:
-        print('Error downloading decile 1 data:', e)
+        print('Error downloading decile data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
+
 
 
 #               Prediction Form 
