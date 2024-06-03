@@ -368,8 +368,8 @@ export default function UsersTable() {
                   <OutlinedInput
                     name="password"
                     type={showPassword ? 'text' : 'password'}
-                    value={editedUser.password}
                     onChange={(e) => setEditedUser({ ...editedUser, password: e.target.value })}
+                    required
                     endAdornment={
                       <InputAdornment position="end">
                         <IconButton

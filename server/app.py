@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from flask_migrate import Migrate
 import pandas as pd
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 # project db, config import 
 from models import db, admin, User, Role, ChrunTrend, ClientInfos, Sous_segment, Profiles, TestDataset
@@ -185,44 +186,6 @@ def role_to_dict(role):
 #_________________________________________________
 #               UPLOAD DATASET
 #_________________________________________________
-# @app.route('/upload', methods=['POST'])
-# def upload_data():
-#     if 'file' not in request.files:
-#         return jsonify({'error': 'No file part'})
-
-#     file = request.files['file']
-
-#     if file.filename == '':
-#         return jsonify({'error': 'No selected file'})
-
-    
-#     if file and allowed_file(file.filename):
-#         try:
-#             # Read CSV file
-#             stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-#             csv_data = csv.reader(stream)
-            
-#             # Read headers
-#             headers = next(csv_data)
-#             print(headers)
-
-#             # Iterate over CSV rows and insert into database
-#             for row in csv_data:
-#                 insert_sql = f"INSERT INTO testdataset ({', '.join(headers)}) VALUES ({', '.join(['%s'] * len(row))})"
-#                 print(insert_sql)
-#                 db.engine.execute(insert_sql, row)
-            
-           
-            
-#             # Commit changes to the database
-#             db.session.commit()
-#             return jsonify({'success': 'File uploaded successfully and data inserted into database.'}), 200
-#         except Exception as e:
-#             return jsonify({'error': str(e)})
-#     else:
-#         return jsonify({'error': 'Invalid file type'})
-
-
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -288,11 +251,22 @@ def upload_file():
 
         # Rename DataFrame columns to match database column names
         df.rename(columns=column_mapping, inplace=True)
-
-    # Insert data into the database
+        
         try:
-            with engine.connect() as connection:
-                df.to_sql('testdataset', con=connection, if_exists='append', index=False)
+            with engine.connect() as connection: 
+                # Create a delete statement targeting the table
+                delete_statement = delete(ClientInfos)
+
+                # Execute the delete statement
+                connection.execute(delete_statement)
+
+                # Commit the transaction
+                connection.commit()
+                
+                # Insert new data from the DataFrame
+                df.to_sql('clientdataset', con=connection, if_exists='append', index=False)
+                print("Data inserted successfully")
+                
             return jsonify({'success': True, 'message': 'File uploaded successfully'})
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)})

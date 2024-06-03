@@ -7,7 +7,8 @@ class ApplicationConfig:
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:admin@localhost:5432/djezzydb'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:admin@localhost:5432/DjezzyDB'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     SESSION_TYPE = "redis"
     SESSION_PERMANENT = False
