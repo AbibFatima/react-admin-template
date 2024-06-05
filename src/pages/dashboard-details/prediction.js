@@ -18,6 +18,7 @@ const phoneRegExp = /^((\\+[1-9]{1,4}[ \\-]*)|(\\([0-9]{2,3}\\)[ \\-]*)|([0-9]{2
 const Prediction = () => {
   const [clientOptions, setClientOptions] = useState([]);
   const [phoneOptions, setPhoneOptions] = useState([]);
+  const [, setSelectedClient] = useState('');
 
   useEffect(() => {
     // Fetch the options for the autocomplete
@@ -27,7 +28,6 @@ const Prediction = () => {
         const data = await response.json();
 
         setClientOptions(data.map((client) => ({ label: client.id_client.toString(), value: client.id_client })));
-        setPhoneOptions(data.map((client) => ({ label: client.phone_number.toString(), value: client.phone_number })));
       } catch (error) {
         console.error('Failed to fetch client IDs:', error);
       }
@@ -35,6 +35,17 @@ const Prediction = () => {
 
     fetchOptions();
   }, []);
+
+  const handleClientIdChange = async (event, value) => {
+    setSelectedClient(value?.value || '');
+    try {
+      const response = await fetch(`http://localhost:5000/client-phone/${value?.value}`);
+      const data = await response.json();
+      setPhoneOptions(data.map((client) => ({ label: client.phone_number.toString(), value: client.phone_number })));
+    } catch (error) {
+      console.error('Failed to fetch client phone number:', error);
+    }
+  };
 
   return (
     <ComponentSkeleton>
@@ -98,7 +109,10 @@ const Prediction = () => {
                             id="id-client"
                             options={clientOptions}
                             getOptionLabel={(option) => option.label}
-                            onChange={(event, value) => setFieldValue('idClient', value?.value || '')}
+                            onChange={(event, value) => {
+                              setFieldValue('idClient', value?.value || '');
+                              handleClientIdChange(event, value);
+                            }}
                             renderInput={(params) => (
                               <TextField
                                 {...params}
@@ -176,8 +190,8 @@ const Prediction = () => {
                                       },
                                       plotOptions: {
                                         radialBar: {
-                                          startAngle: -135,
-                                          endAngle: 225,
+                                          startAngle: 0,
+                                          endAngle: 360,
                                           hollow: {
                                             margin: 0,
                                             size: '70%',
@@ -212,14 +226,14 @@ const Prediction = () => {
                                               offsetY: -10,
                                               show: true,
                                               color: '#888',
-                                              fontSize: '17px'
+                                              fontSize: '15px'
                                             },
                                             value: {
                                               formatter: function (val) {
-                                                return parseInt(val);
+                                                return parseInt(val) + '%';
                                               },
                                               color: '#111',
-                                              fontSize: '36px',
+                                              fontSize: '32px',
                                               show: true
                                             }
                                           }
@@ -245,7 +259,7 @@ const Prediction = () => {
                                     }}
                                     series={[status.probability]}
                                     type="radialBar"
-                                    height={250}
+                                    height={280}
                                   />
                                 </Box>
                               </Box>

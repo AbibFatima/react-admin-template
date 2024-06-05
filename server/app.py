@@ -61,9 +61,18 @@ model = joblib.load('Models\Xgboost_model.joblib')
 #                 GET ALL USERS
 #_________________________________________________
 @app.route('/users', methods=['GET'])
+@jwt_required()
 def get_users():
+    current_admin_id = get_jwt_identity()
+    
+    if not current_admin_id:
+        return jsonify({'error': 'Invalid or expired token'}), 401
+    user = User.query.filter_by(email=current_admin_id).first()
+    
     users = User.query.all()
-    return jsonify([user_to_dict(user) for user in users])
+    users_dict = [user_to_dict(user) for user in users]
+    
+    return jsonify({'users': users_dict, 'current_admin_id': user.id})
 
 #_________________________________________________
 #                   GET USER
@@ -113,6 +122,16 @@ def update_user(user_id):
         return jsonify({'error': 'User not found'}), 404
 
     data = request.json
+    
+    # Temporarily disable autoflush
+    with db.session.no_autoflush:
+        # Check if the new email already exists in another user
+        if "email" in data and data["email"] != user.email:
+            user_exists = User.query.filter(User.email == data["email"], User.id != user_id).first() is not None
+            if user_exists:
+                return jsonify({"error": "Email already exists"}), 409
+    
+    # Update user attributes
     user.firstname = data.get("firstname", user.firstname)
     user.lastname = data.get("lastname", user.lastname)
     user.email = data.get("email", user.email)
@@ -129,10 +148,10 @@ def update_user(user_id):
         else:
             return jsonify({'error': 'Role not found'}), 404
 
-
     db.session.commit()
-
+    
     return jsonify(user_to_dict(user)), 200
+
 
 #_________________________________________________
 #                  DELETE USER
@@ -458,28 +477,12 @@ def get_analytics():
 #______________________________________________________
 #               Dashboard second row
 #______________________________________________________
-# Line Chart : Total Churn Number Per Day and Per Month 
+# Line Chart : Total Churn Number Per week and Per Month 
 @app.route('/dashboard/linechartdata', methods=['GET'])
 def get_line_chart_data():
     try:
         # # Retrieve the interval from the query parameters
-        interval = request.args.get('interval', 'day')
-
-        # # Set the default date format and interval for the query
-        # date_format = "%Y-%m-%d"
-        # interval_func = func.date_trunc('day', ChrunTrend.churn_date)
-        
-        # # Adjust the interval and date format for month aggregation
-        # if interval == 'month':
-        #     date_format = "%Y-%m"
-        #     interval_func = func.date_trunc('month', ChrunTrend.churn_date)
-        
-        # # Query the database based on the specified interval
-        # churn_data = db.session.query(interval_func.label('interval'), func.sum(ChrunTrend.churnernumber).label('total_churner_number')) \
-        #     .group_by(interval_func) \
-        #     .order_by(interval_func) \
-        #     .all()
-            
+        interval = request.args.get('interval', 'week')
         
         with app.app_context():
             if interval == 'month':
@@ -696,6 +699,24 @@ def get_segments_chart_data():
     except Exception as e:
         print('Error fetching donut chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
+
+
+# @app.route('/maxChurnTenureSegment',method=["GET"])
+# def get_max_tenure_segment():
+#     try : 
+#         sql_query = """
+#             SELECT
+#             FROM
+#             WHERE
+        
+#         """
+        
+#         result = db.session.execute(text(sql_query))
+        
+#         return jsonify(), 200
+#     except Exception as e:
+#         print('Error fetching tenure segments data:', e)
+#         return jsonify({'error': 'Internal Server Error'}), 500
     
     
 #Segment_tenure
@@ -873,7 +894,7 @@ def download_decile():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 
-
+#_________________________________________________
 #               Prediction Form 
 #_________________________________________________
 @app.route("/prediction", methods=["POST"])
@@ -969,6 +990,17 @@ def get_client_data():
 
 
 
+@app.route('/client-phone/<int:id>', methods=['GET'])
+def get_client_phone(id):
+    try:
+        clients = ClientInfos.query.filter_by(id_client=id).all()
+        client_data = [{"phone_number": client.phone_number} for client in clients]
+        return jsonify(client_data), 200
+    except Exception as e:
+        print('Error fetching client phone number:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
 #_________________________________________________
 #             Registration Form 
 #_________________________________________________
@@ -1032,10 +1064,14 @@ def login_user():
 @app.route("/logout", methods=["POST"])
 @jwt_required()
 def logout():
-    session.pop("user_id", None)
-    response = jsonify({"msg": "logout successful"})
-    unset_jwt_cookies(response)
-    return response
+    try:
+        session.pop("user_id", None)
+        response = jsonify({"msg": "logout successful"})
+        unset_jwt_cookies(response)
+        return response
+    except Exception as e:
+        print('Error log out:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 
 #_________________________________________________

@@ -90,12 +90,36 @@ const LineChartTotalChurn = ({ slot }) => {
           show: true,
           color: line
         },
-        tickAmount: churnData.length
+        tickAmount: churnData.length,
+        title: {
+          text: 'Time (Week/Month)',
+          align: 'left',
+          margin: 3,
+          floating: false,
+          style: {
+            fontSize: '0.875rem',
+            fontWeight: 400,
+            fontFamily: `'Public Sans', sans-serif`,
+            color: '#8c8c8c'
+          }
+        }
       },
       yaxis: {
         labels: {
           style: {
             colors: [secondary]
+          }
+        },
+        title: {
+          text: 'Count',
+          align: 'right',
+          margin: 3,
+          floating: false,
+          style: {
+            fontSize: '0.875rem',
+            fontWeight: 400,
+            fontFamily: `'Public Sans', sans-serif`,
+            color: '#8c8c8c'
           }
         }
       },

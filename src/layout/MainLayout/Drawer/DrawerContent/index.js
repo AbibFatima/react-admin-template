@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 // project import
 import Navigation from './Navigation';
@@ -6,28 +5,41 @@ import SimpleBar from 'components/third-party/SimpleBar';
 import { List, ListItemButton, ListItemIcon, ListItemText, Box, Typography } from '@mui/material';
 import { LogoutOutlined } from '@ant-design/icons';
 
+import secureLocalStorage from 'react-secure-storage';
 // ==============================|| DRAWER CONTENT ||============================== //
 
 const DrawerContent = () => {
   const theme = useTheme();
-  const [, setLogoutError] = useState('');
 
   const handleLogout = async () => {
+    const token = secureLocalStorage.getItem('token');
+
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
     try {
-      const response = await fetch('http://localhost:5000/logout', {
+      const response = await fetch('//localhost:5000/logout', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
       });
 
-      if (response.ok) {
-        setLogoutError('');
-        window.location.href = '/login';
+      if (!response.ok) {
+        alert('Error logging out !');
       } else {
-        alert('Error logging out!');
+        secureLocalStorage.removeItem('token');
+        secureLocalStorage.removeItem('name');
+        secureLocalStorage.removeItem('admin');
+        secureLocalStorage.removeItem('specialist');
+        secureLocalStorage.clear();
+        window.location.href = '/login';
       }
     } catch (error) {
       console.error('Error logging out:', error);
-      alert('Error logging out!');
     }
   };
 

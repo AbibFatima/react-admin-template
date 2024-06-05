@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   Box,
   FormControl,
   Paper,
@@ -20,19 +21,24 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   MenuItem,
   Typography,
   Select,
-  Grid
+  Grid,
+  Snackbar,
+  FormHelperText,
+  Stack
 } from '@mui/material';
 import { EditOutlined, DeleteOutlined, AddCircleOutline, SearchOutlined } from '@mui/icons-material';
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
+import { Formik, Form } from 'formik';
+import * as Yup from 'yup';
 
 import AddUser from './AddUsers';
 import TableUsersHead from './TableUsersHead';
 import MainCard from 'components/MainCard';
 
+import secureLocalStorage from 'react-secure-storage';
 // ==============================|| USERS TABLE ||============================== //
 
 export default function UsersTable() {
@@ -45,6 +51,8 @@ export default function UsersTable() {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [search, setSearch] = useState('');
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [currentAdminId, setCurrentAdminId] = useState(null);
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -66,12 +74,19 @@ export default function UsersTable() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('//localhost:5000/users');
+        const token = secureLocalStorage.getItem('token');
+
+        const response = await fetch('//localhost:5000/users', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
         const jsonData = await response.json();
-        setUsers(jsonData);
+        setUsers(jsonData.users);
+        setCurrentAdminId(jsonData.current_admin_id);
       } catch (error) {
         console.error('Error fetching users:', error);
       }
@@ -138,6 +153,7 @@ export default function UsersTable() {
   const handleEditDialogOpen = (user) => {
     setEditedUser({
       ...user,
+      password: '',
       role: user.role ? user.role.id : ''
     });
     setOpenEditDialog(true);
@@ -155,7 +171,7 @@ export default function UsersTable() {
     });
   };
 
-  const handleEditUser = async () => {
+  const handleEditUser = async (values, { setSubmitting, setErrors }) => {
     try {
       const response = await fetch(`//localhost:5000/users/${editedUser.id}`, {
         method: 'PUT',
@@ -163,21 +179,28 @@ export default function UsersTable() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ...editedUser,
-          role_id: editedUser.role
+          ...values,
+          role_id: values.role
         })
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        if (response.status === 409) {
+          const errorData = await response.json();
+          setErrors({ email: errorData.error });
+        } else {
+          throw new Error('Network response was not ok');
+        }
       }
 
       const updatedUser = await response.json();
       const updatedUsers = users.map((user) => (user.id === updatedUser.id ? updatedUser : user));
       setUsers(updatedUsers);
+      setOpenSnackbar(true);
       handleEditDialogClose();
     } catch (error) {
       console.error('Error updating user:', error);
+      setSubmitting(false);
     }
   };
 
@@ -288,7 +311,11 @@ export default function UsersTable() {
                     </IconButton>
                   </TableCell>
                   <TableCell align="left">
-                    <IconButton onClick={() => handleDelete(row.id)} color="secondary">
+                    <IconButton
+                      onClick={() => handleDelete(row.id)}
+                      color="secondary"
+                      disabled={row.id === currentAdminId} // Disable the button for the admin's own account
+                    >
                       <DeleteOutlined />
                     </IconButton>
                   </TableCell>
@@ -314,91 +341,177 @@ export default function UsersTable() {
           <Typography variant="h4">Edit User</Typography>
         </DialogTitle>
         <DialogContent>
-          <MainCard>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  name="firstname"
-                  value={editedUser.firstname}
-                  onChange={(e) => setEditedUser({ ...editedUser, firstname: e.target.value })}
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  name="lastname"
-                  value={editedUser.lastname}
-                  onChange={(e) => setEditedUser({ ...editedUser, lastname: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel id="roles-select-label">Roles</InputLabel>
-                  <Select
-                    labelId="roles-select-label"
-                    id="roles-select"
-                    value={editedUser.role}
-                    onChange={(e) => setEditedUser({ ...editedUser, role: e.target.value })}
-                    renderValue={(selected) => roles.find((role) => role.id === selected)?.name || ''}
-                  >
-                    {roles.map((role) => (
-                      <MenuItem key={role.id} value={role.id}>
-                        {role.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  name="email"
-                  value={editedUser.email}
-                  onChange={(e) => setEditedUser({ ...editedUser, email: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl variant="outlined" fullWidth>
-                  <InputLabel>Password</InputLabel>
-                  <OutlinedInput
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={editedUser.password}
-                    onChange={(e) => setEditedUser({ ...editedUser, password: e.target.value })}
-                    required
-                    endAdornment={
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle password visibility"
-                          onClick={handleClickShowPassword}
-                          onMouseDown={handleMouseDownPassword}
-                          edge="end"
+          <Formik
+            initialValues={editedUser}
+            enableReinitialize
+            validationSchema={Yup.object().shape({
+              firstname: Yup.string().required('First Name is required'),
+              lastname: Yup.string().required('Last Name is required'),
+              role: Yup.string().required('Role is required'),
+              email: Yup.string()
+                .email('Must be a valid email')
+                .max(255)
+                .matches(/@djezzy\.dz$/, 'Email must end with @djezzy.dz')
+                .required('Email is required'),
+              password: Yup.string().min(6, 'Password must be at least 6 characters').max(255).required('Password is required')
+            })}
+            onSubmit={handleEditUser}
+          >
+            {({ values, handleChange, handleBlur, handleSubmit, errors, touched }) => (
+              <Form onSubmit={handleSubmit}>
+                <MainCard>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Stack spacing={1}>
+                        <InputLabel htmlFor="firstname">First Name</InputLabel>
+                        <OutlinedInput
+                          id="firstname"
+                          type="text"
+                          value={values.firstname}
+                          name="firstname"
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          fullWidth
+                          error={Boolean(touched.firstname && errors.firstname)}
+                        />
+                        {touched.firstname && errors.firstname && (
+                          <FormHelperText error id="helper-text-firstname">
+                            {errors.firstname}
+                          </FormHelperText>
+                        )}
+                      </Stack>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Stack spacing={1}>
+                        <InputLabel htmlFor="lastname">Last Name</InputLabel>
+                        <OutlinedInput
+                          fullWidth
+                          id="lastname"
+                          type="text"
+                          value={values.lastname}
+                          name="lastname"
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          error={Boolean(touched.lastname && errors.lastname)}
+                        />
+                        {touched.lastname && errors.lastname && (
+                          <FormHelperText error id="helper-text-lastname">
+                            {errors.lastname}
+                          </FormHelperText>
+                        )}
+                      </Stack>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth>
+                        <InputLabel id="role">Roles</InputLabel>
+                        <Select
+                          labelId="role"
+                          id="role"
+                          name="role"
+                          value={values.role}
+                          variant="outlined"
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          renderValue={(selected) => roles.find((role) => role.id === selected)?.name || ''}
+                          error={Boolean(touched.role && errors.role)}
                         >
-                          {showPassword ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-                        </IconButton>
-                      </InputAdornment>
-                    }
-                    label="Password"
-                  />
-                </FormControl>
-              </Grid>
-            </Grid>
-          </MainCard>
-          <DialogActions>
-            <Button variant="contained" onClick={handleEditUser} color="primary">
-              Save Changes
-            </Button>
-            <Button onClick={handleEditDialogClose} color="secondary">
-              Cancel
-            </Button>
-          </DialogActions>
+                          {roles.map((role) => (
+                            <MenuItem key={role.id} value={role.id}>
+                              {role.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {touched.role && errors.role && <FormHelperText error>{errors.role}</FormHelperText>}
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Stack spacing={1}>
+                        <InputLabel htmlFor="email">Email Address</InputLabel>
+                        <OutlinedInput
+                          fullWidth
+                          id="email"
+                          type="email"
+                          value={values.email}
+                          name="email"
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          placeholder="name@djezzy.dz"
+                          error={Boolean(touched.email && errors.email)}
+                        />
+                        {touched.email && errors.email && (
+                          <FormHelperText error id="helper-text-email">
+                            {errors.email}
+                          </FormHelperText>
+                        )}
+                      </Stack>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Stack spacing={1}>
+                        <InputLabel htmlFor="password">Password</InputLabel>
+                        <OutlinedInput
+                          fullWidth
+                          error={Boolean(touched.password && errors.password)}
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          name="password"
+                          value={values.password}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          endAdornment={
+                            <InputAdornment position="end">
+                              <IconButton
+                                aria-label="toggle password visibility"
+                                onClick={handleClickShowPassword}
+                                onMouseDown={handleMouseDownPassword}
+                                edge="end"
+                                size="large"
+                              >
+                                {showPassword ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                              </IconButton>
+                            </InputAdornment>
+                          }
+                          placeholder="******"
+                          inputProps={{}}
+                        />
+                        {touched.password && errors.password && (
+                          <FormHelperText error id="helper-text-password-signup">
+                            {errors.password}
+                          </FormHelperText>
+                        )}
+                      </Stack>
+                    </Grid>
+                  </Grid>
+
+                  <Box mt={2} display="flex" justifyContent="flex-end">
+                    <DialogActions>
+                      <Button type="submit" variant="contained" color="primary">
+                        Save Changes
+                      </Button>
+                      <Button onClick={handleEditDialogClose} color="secondary">
+                        Cancel
+                      </Button>
+                    </DialogActions>
+                  </Box>
+                </MainCard>
+              </Form>
+            )}
+          </Formik>
         </DialogContent>
       </Dialog>
+
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={() => setOpenSnackbar(false)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left'
+        }}
+      >
+        <Alert severity="success" onClose={() => setOpenSnackbar(false)}>
+          User modified successfully!
+        </Alert>
+      </Snackbar>
 
       {/* Add User Dialog */}
       <Dialog open={openAddDialog} onClose={handleAddDialogClose}>
