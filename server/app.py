@@ -700,23 +700,48 @@ def get_segments_chart_data():
         print('Error fetching donut chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
+@app.route('/maxTenureSegments', methods=['GET'])
+def get_max_tenure_segments_data():
+    try:
+        sql_query = """          
+            SELECT 
+                t.seg_tenure AS max_churners_tenure_segment,
+                COUNT(CASE WHEN cdp.pred_flag = 1 THEN 1 END) AS max_churners_count,
+                COUNT(CASE WHEN cdp.pred_flag = 0 THEN 1 END) AS non_churners_count,
+                COUNT(*) AS total_count
+            FROM segment_tenure t
+            JOIN client_data_predictions cdp ON cdp."Seg_Tenure" = t.id_tenure
+            GROUP BY t.seg_tenure
+            ORDER BY max_churners_count DESC
+            LIMIT 1
+        """
+        result = db.session.execute(text(sql_query))
+        data = result.fetchone()
 
-# @app.route('/maxChurnTenureSegment',method=["GET"])
-# def get_max_tenure_segment():
-#     try : 
-#         sql_query = """
-#             SELECT
-#             FROM
-#             WHERE
-        
-#         """
-        
-#         result = db.session.execute(text(sql_query))
-        
-#         return jsonify(), 200
-#     except Exception as e:
-#         print('Error fetching tenure segments data:', e)
-#         return jsonify({'error': 'Internal Server Error'}), 500
+        if data:
+            max_churners_tenure_segment = data[0]
+            max_churners_count = data[1]
+            non_churners_count = data[2]
+            total_count = data[3]
+
+            max_churners_percentage = (max_churners_count / total_count) * 100
+            non_churners_percentage = (non_churners_count / total_count) * 100
+
+            result_data = {
+                'maxChurnersTenureSegment': max_churners_tenure_segment,
+                'maxChurnersCount': max_churners_count,
+                'maxChurnersPercentage': round(max_churners_percentage, 2),
+                'nonChurnersCount': non_churners_count,
+                'nonChurnersPercentage': round(non_churners_percentage, 2)
+            }
+            print('Data:', result_data)
+            return jsonify(result_data), 200
+        else:
+            return jsonify({'error': 'No data found'}), 404
+
+    except Exception as e:
+        print('Error fetching max tenure segments data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
     
     
 #Segment_tenure
