@@ -28,7 +28,7 @@ const icons = {
 
 const utilities = {
   id: 'utilities',
-  title: 'Utilities',
+  title: 'Services',
   type: 'group',
   children: [
     {
@@ -40,7 +40,7 @@ const utilities = {
     },
     {
       id: 'util-prediction',
-      title: 'Prediction',
+      title: 'Prédiction',
       type: 'item',
       url: '/prediction',
       icon: icons.FundOutlined
@@ -52,28 +52,6 @@ const utilities = {
       url: '/uplift',
       icon: icons.BarChartOutlined
     }
-    // {
-    //   id: 'util-color',
-    //   title: 'Color',
-    //   type: 'item',
-    //   url: '/color',
-    //   icon: icons.BgColorsOutlined
-    // },
-    // {
-    //   id: 'util-shadow',
-    //   title: 'Shadow',
-    //   type: 'item',
-    //   url: '/shadow',
-    //   icon: icons.BarcodeOutlined
-    // },
-    // {
-    //   id: 'ant-icons',
-    //   title: 'Ant Icons',
-    //   type: 'item',
-    //   url: '/icons/ant',
-    //   icon: icons.AntDesignOutlined,
-    //   breadcrumbs: false
-    // }
   ]
 };
 

@@ -34,11 +34,11 @@ const Segments = () => {
 
   return (
     <ComponentSkeleton>
-      <Grid container  rowSpacing={4.5} columnSpacing={5.75}>
-        <Grid item xs={12} sm={6} md={4}>
+      <Grid container rowSpacing={4.5} columnSpacing={5.75}>
+        <Grid item xs={12} sm={6} md={6}>
           <MainCard>
-            <Typography variant="h5" color="textSecondary">
-              Segment Tenure with maximum of Churners
+            <Typography variant="h6" color="textSecondary">
+              Segment Tenure avec un maximum de désabonnement
             </Typography>
             <AnalyticEcommerce
               title={segmentData.maxChurnersTenureSegment.toString()}
@@ -47,10 +47,10 @@ const Segments = () => {
             />
           </MainCard>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid item xs={12} sm={6} md={6}>
           <MainCard>
-            <Typography variant="h5" color="textSecondary">
-              Non churners of max segment tenure
+            <Typography variant="h6" color="textSecondary">
+              Nombre de non désabonnement pour max segment tenure
             </Typography>
             <AnalyticEcommerce
               title={segmentData.maxChurnersTenureSegment.toString()}

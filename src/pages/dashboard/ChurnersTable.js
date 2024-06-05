@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Link,
@@ -99,13 +98,15 @@ export default function ChurnersTable() {
 
   return (
     <Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center" p={2}>
+        <Typography variant="h6" color="textSecondary">
+          {' '}
+        </Typography>
+        <Button variant="contained" color="primary" onClick={handleDownloadCSV}>
+          Télécharger CSV
+        </Button>
+      </Box>
       <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" p={2}>
-          <Typography variant="h6">Churners Table</Typography>
-          <Button variant="contained" color="primary" onClick={handleDownloadCSV}>
-            Download CSV
-          </Button>
-        </Box>
         <TableContainer
           sx={{
             width: '100%',
@@ -132,9 +133,7 @@ export default function ChurnersTable() {
               {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
                 <TableRow hover role="checkbox" sx={{ '&:last-child td, &:last-child th': { border: 0 } }} tabIndex={-1} key={index}>
                   <TableCell component="th" scope="row" align="left">
-                    <Link color="secondary" component={RouterLink} to={`/details/${row.id_client}`}>
-                      {row.id_client}
-                    </Link>
+                    <Link color="secondary">{row.id_client}</Link>
                   </TableCell>
                   <TableCell align="left">{row.phone_number}</TableCell>
                   <TableCell align="left">{row.seg_tenure}</TableCell>
@@ -149,7 +148,7 @@ export default function ChurnersTable() {
           </Table>
         </TableContainer>
         <TablePagination
-          rowsPerPageOptions={[10, 25, 100]}
+          rowsPerPageOptions={[10, 20, 30]}
           component="div"
           count={data.length}
           rowsPerPage={rowsPerPage}
@@ -168,13 +167,13 @@ const headCells = [
     id: 'id_client',
     align: 'left',
     disablePadding: false,
-    label: 'Client ID'
+    label: 'Identifiant du client'
   },
   {
     id: 'phone_number',
     align: 'left',
     disablePadding: true,
-    label: 'Phone Number'
+    label: 'N° de téléphone'
   },
   {
     id: 'seg_tenure',
@@ -198,7 +197,7 @@ const headCells = [
     id: 'pred_flag',
     align: 'left',
     disablePadding: false,
-    label: 'Predicted Flag'
+    label: 'Flag prédit'
   }
 ];
 

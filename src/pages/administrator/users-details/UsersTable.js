@@ -250,12 +250,12 @@ export default function UsersTable() {
                 <SearchOutlined />
               </InputAdornment>
             }
-            placeholder="Search Users"
+            placeholder="Recherche.."
           />
         </FormControl>
         <Box>
           <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenAddDialog}>
-            Add User
+            Ajouter un utilisateur
           </Button>
           <Button
             variant="contained"
@@ -265,7 +265,7 @@ export default function UsersTable() {
             disabled={selectedRows.length === 0}
             sx={{ ml: 2 }}
           >
-            Delete Selected
+            Effacer la sélection
           </Button>
         </Box>
       </Box>
@@ -325,7 +325,7 @@ export default function UsersTable() {
           </Table>
         </TableContainer>
         <TablePagination
-          rowsPerPageOptions={[10, 25, 100]}
+          rowsPerPageOptions={[10, 20, 30]}
           component="div"
           count={filteredUsers.length}
           rowsPerPage={rowsPerPage}
@@ -338,22 +338,25 @@ export default function UsersTable() {
       {/* Edit User Dialog */}
       <Dialog open={openEditDialog} onClose={handleEditDialogClose}>
         <DialogTitle>
-          <Typography variant="h4">Edit User</Typography>
+          <Typography variant="h4">Modifier l&apos;utilisateur</Typography>
         </DialogTitle>
         <DialogContent>
           <Formik
             initialValues={editedUser}
             enableReinitialize
             validationSchema={Yup.object().shape({
-              firstname: Yup.string().required('First Name is required'),
-              lastname: Yup.string().required('Last Name is required'),
-              role: Yup.string().required('Role is required'),
+              firstname: Yup.string().max(255).required('Le prénom est requis'),
+              lastname: Yup.string().max(255).required('Le nom de famille est requis'),
+              role: Yup.number().required('Le rôle est requis'),
               email: Yup.string()
-                .email('Must be a valid email')
+                .email('Doit être une adresse e-mail valide')
                 .max(255)
-                .matches(/@djezzy\.dz$/, 'Email must end with @djezzy.dz')
-                .required('Email is required'),
-              password: Yup.string().min(6, 'Password must be at least 6 characters').max(255).required('Password is required')
+                .matches(/@djezzy\.dz$/, "L'e-mail doit se terminer par @djezzy.dz")
+                .required("L'adresse e-mail est requise"),
+              password: Yup.string()
+                .min(6, 'Le mot de passe doit contenir au moins 6 caractères')
+                .max(255)
+                .required('Le mot de passe est requis')
             })}
             onSubmit={handleEditUser}
           >
@@ -363,7 +366,7 @@ export default function UsersTable() {
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <Stack spacing={1}>
-                        <InputLabel htmlFor="firstname">First Name</InputLabel>
+                        <InputLabel htmlFor="firstname">Prénom</InputLabel>
                         <OutlinedInput
                           id="firstname"
                           type="text"
@@ -383,7 +386,7 @@ export default function UsersTable() {
                     </Grid>
                     <Grid item xs={12}>
                       <Stack spacing={1}>
-                        <InputLabel htmlFor="lastname">Last Name</InputLabel>
+                        <InputLabel htmlFor="lastname">Nom de famille</InputLabel>
                         <OutlinedInput
                           fullWidth
                           id="lastname"
@@ -403,7 +406,7 @@ export default function UsersTable() {
                     </Grid>
                     <Grid item xs={12}>
                       <FormControl fullWidth>
-                        <InputLabel id="role">Roles</InputLabel>
+                        <InputLabel id="role">Rôle</InputLabel>
                         <Select
                           labelId="role"
                           id="role"
@@ -426,7 +429,7 @@ export default function UsersTable() {
                     </Grid>
                     <Grid item xs={12}>
                       <Stack spacing={1}>
-                        <InputLabel htmlFor="email">Email Address</InputLabel>
+                        <InputLabel htmlFor="email">Adresse e-mail</InputLabel>
                         <OutlinedInput
                           fullWidth
                           id="email"
@@ -447,7 +450,7 @@ export default function UsersTable() {
                     </Grid>
                     <Grid item xs={12}>
                       <Stack spacing={1}>
-                        <InputLabel htmlFor="password">Password</InputLabel>
+                        <InputLabel htmlFor="password">Mot de passe</InputLabel>
                         <OutlinedInput
                           fullWidth
                           error={Boolean(touched.password && errors.password)}
@@ -485,10 +488,10 @@ export default function UsersTable() {
                   <Box mt={2} display="flex" justifyContent="flex-end">
                     <DialogActions>
                       <Button type="submit" variant="contained" color="primary">
-                        Save Changes
+                        Sauvegarder
                       </Button>
                       <Button onClick={handleEditDialogClose} color="secondary">
-                        Cancel
+                        Annuler
                       </Button>
                     </DialogActions>
                   </Box>
@@ -509,20 +512,20 @@ export default function UsersTable() {
         }}
       >
         <Alert severity="success" onClose={() => setOpenSnackbar(false)}>
-          User modified successfully!
+          Utilisateur modifié avec succès !
         </Alert>
       </Snackbar>
 
       {/* Add User Dialog */}
       <Dialog open={openAddDialog} onClose={handleAddDialogClose}>
         <DialogTitle>
-          <Typography variant="h4">Add User</Typography>
+          <Typography variant="h4">Ajouter un utilisateur</Typography>
         </DialogTitle>
         <DialogContent>
           <AddUser onAddUser={handleAddUser} />
           <DialogActions>
             <Button onClick={handleAddDialogClose} color="secondary">
-              Cancel
+              Annuler
             </Button>
           </DialogActions>
         </DialogContent>

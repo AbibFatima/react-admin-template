@@ -54,18 +54,10 @@ const DashboardDefault = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:5000/dashboard/columnchartdata');
+        const response = await fetch('http://localhost:5000/dashboard/maxchurnprofile');
         const data = await response.json();
-
-        // Find the tariff profile with maximum churners
-        const maxChurnersProfile = data.reduce(
-          (maxProfile, currentProfile) => {
-            return currentProfile.churnersCount > maxProfile.churnersCount ? currentProfile : maxProfile;
-          },
-          { churnersCount: -Infinity }
-        );
-
-        setMaxChurnersData(maxChurnersProfile);
+        console.log(data);
+        setMaxChurnersData(data);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -102,14 +94,14 @@ const DashboardDefault = () => {
     <Grid container rowSpacing={4.5} columnSpacing={2.75}>
       {/* row 1 */}
       <Grid item xs={12} sx={{ mb: -2.25 }}>
-        <Typography variant="h5">Dashboard</Typography>
+        <Typography variant="h5">Tableau de bord</Typography>
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>
-        <AnalyticEcommerce title="Total Current Customers" count={analyticsData.totalCount.toString()} />
+        <AnalyticEcommerce title="Total clients actuels" count={analyticsData.totalCount.toString()} />
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>
         <AnalyticEcommerce
-          title="Total Churners"
+          title="Nombre total de churners"
           count={analyticsData.churnersCount.toString()}
           percentage={analyticsData.churnersPercentage}
           color="warning"
@@ -118,7 +110,7 @@ const DashboardDefault = () => {
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>
         <AnalyticEcommerce
-          title="Total Non Churners"
+          title="Nombre total de non-churners"
           count={analyticsData.nonChurnersCount.toString()}
           percentage={analyticsData.nonChurnersPercentage}
           color="success"
@@ -137,7 +129,7 @@ const DashboardDefault = () => {
       <Grid item xs={12} md={7} lg={8}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
-            <Typography variant="h5">Total Churn</Typography>
+            <Typography variant="h5">Nombre total de désabonnements en fonction du temps</Typography>
           </Grid>
           <Grid item>
             <Stack direction="row" alignItems="center" spacing={0}>
@@ -147,7 +139,7 @@ const DashboardDefault = () => {
                 color={slot === 'week' ? 'primary' : 'secondary'}
                 variant={slot === 'week' ? 'outlined' : 'text'}
               >
-                Week
+                Semaine
               </Button>
               <Button
                 size="small"
@@ -155,7 +147,7 @@ const DashboardDefault = () => {
                 color={slot === 'month' ? 'primary' : 'secondary'}
                 variant={slot === 'month' ? 'outlined' : 'text'}
               >
-                Month
+                Mois
               </Button>
             </Stack>
           </Grid>
@@ -169,19 +161,21 @@ const DashboardDefault = () => {
       <Grid item xs={12} md={5} lg={4}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
-            <Typography variant="h5">Population per Value Segment</Typography>
+            <Typography variant="h5">Population par Value Segment</Typography>
           </Grid>
           <Grid item />
         </Grid>
-        <MainCard sx={{ mt: 2 }} content={false}>
-          <Box sx={{ p: 4, pb: 0 }}>
+        <MainCard sx={{ mt: 2, mb: 4 }} content={false}>
+          <Box sx={{ p: 3, pb: 0 }}>
             <Stack spacing={2}>
               <Typography variant="h6" color="textSecondary">
-                This Week Statistics
+                Statistiques de la semaine
               </Typography>
             </Stack>
           </Box>
-          <ValueSegmentDonutChart />
+          <Box sx={{ mb: 3 }}>
+            <ValueSegmentDonutChart />
+          </Box>
         </MainCard>
       </Grid>
 
@@ -189,7 +183,7 @@ const DashboardDefault = () => {
       <Grid item xs={12}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
-            <Typography variant="h5">Churners Table</Typography>
+            <Typography variant="h5">Tableau de clients susceptibles au désabonnement</Typography>
           </Grid>
           <Grid item />
         </Grid>
@@ -202,17 +196,17 @@ const DashboardDefault = () => {
       <Grid item xs={12}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
-            <Typography variant="h5">Tariff Profil</Typography>
+            <Typography variant="h5">Nombre total prédit de désabonnement et non désabonnement par Tariff Profile</Typography>
           </Grid>
         </Grid>
         <MainCard sx={{ mt: 1.75 }}>
           <Stack spacing={1.5} sx={{ mb: -12 }}>
             <Typography variant="h6" color="secondary">
-              Tariff Profile with Max Churners
+              Tariff Profile avec le plus grand nombre de désabonnement
             </Typography>
             <Typography variant="h4">{maxChurnersData ? maxChurnersData.tariff_profile : 'Loading...'}</Typography>
             <Typography variant="subtitle1" color="secondary">
-              with: {maxChurnersData ? maxChurnersData.churnersCount : 'Loading...'}
+              Maximum: {maxChurnersData ? maxChurnersData.churnersCount + ' churners' : 'Loading...'}
             </Typography>
           </Stack>
           <TariffProfilColumnChart />

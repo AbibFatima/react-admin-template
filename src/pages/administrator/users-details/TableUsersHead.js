@@ -10,31 +10,31 @@ const headCells = [
     id: 'id_user',
     align: 'left',
     disablePadding: false,
-    label: 'User ID'
+    label: "Identifiant de l'utilisateur"
   },
   {
     id: 'firstname',
     align: 'left',
     disablePadding: true,
-    label: 'Firstname'
+    label: 'Prénom'
   },
   {
     id: 'lastname',
     align: 'left',
     disablePadding: false,
-    label: 'Lastname'
+    label: 'Nom de famille'
   },
   {
     id: 'email',
     align: 'left',
     disablePadding: false,
-    label: 'Email'
+    label: 'E-mail'
   },
   {
     id: 'role',
     align: 'left',
     disablePadding: false,
-    label: 'Role'
+    label: 'Rôle'
   },
   {
     id: 'modif',

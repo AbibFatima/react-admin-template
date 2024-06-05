@@ -15,42 +15,22 @@ const AuthFooter = () => {
         textAlign={matchDownSM ? 'center' : 'inherit'}
       >
         <Typography variant="subtitle2" color="secondary" component="span">
-          &copy; Mantis React Dashboard Template By&nbsp;
-          <Typography component={Link} variant="subtitle2" href="https://codedthemes.com" target="_blank" underline="hover">
-            CodedThemes
+          &copy; Djezzy s Dashboard by&nbsp;
+          <Typography component={Link} variant="subtitle2" target="_blank" underline="hover">
+            F.Abib & S.Bouzidi
           </Typography>
         </Typography>
 
-        <Stack direction={matchDownSM ? 'column' : 'row'} spacing={matchDownSM ? 1 : 3} textAlign={matchDownSM ? 'center' : 'inherit'}>
+        <Stack>
           <Typography
             variant="subtitle2"
             color="secondary"
             component={Link}
-            href="https://material-ui.com/store/contributors/codedthemes/"
+            href="https://www.djezzy.dz/"
             target="_blank"
             underline="hover"
           >
-            MUI Templates
-          </Typography>
-          <Typography
-            variant="subtitle2"
-            color="secondary"
-            component={Link}
-            href="https://codedthemes.com"
-            target="_blank"
-            underline="hover"
-          >
-            Privacy Policy
-          </Typography>
-          <Typography
-            variant="subtitle2"
-            color="secondary"
-            component={Link}
-            href="https://codedthemes.support-hub.io/"
-            target="_blank"
-            underline="hover"
-          >
-            Support
+            Officiel web site
           </Typography>
         </Stack>
       </Stack>

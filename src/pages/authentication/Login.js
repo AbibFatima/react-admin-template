@@ -1,12 +1,10 @@
-import { Link } from 'react-router-dom';
-
 // material-ui
 import { Grid, Stack, Typography, Box } from '@mui/material';
 
 // project import
 import AuthLogin from './auth-forms/AuthLogin';
 import AuthWrapper from './AuthWrapper';
-import loginImage from './img/djezzy-og.png';
+import loginImage from './img/undraw_Predictive_analytics_re_wxt8.png';
 
 // ================================|| LOGIN ||================================ //
 
@@ -29,10 +27,10 @@ const Login = () => (
         <Grid container spacing={3} sx={{ maxWidth: 475 }}>
           <Grid item xs={12}>
             <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: { xs: 1, sm: 2 } }}>
-              <Typography variant="h2">Login</Typography>
-              <Typography component={Link} to="/register" variant="body1" sx={{ textDecoration: 'none' }} color="primary">
-                Don&apos;t have an account?
-              </Typography>
+              <Typography variant="h1">Bienvenue !</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: { sm: 2 } }}>
+              <Typography variant="h3">Se connecter</Typography>
             </Stack>
           </Grid>
           <Grid item xs={12}>

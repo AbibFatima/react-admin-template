@@ -16,7 +16,7 @@ const pages = {
   children: [
     {
       id: 'users',
-      title: 'Users',
+      title: 'Utilisateurs',
       type: 'item',
       url: '/admin/users',
       icon: icons.PeopleAltOutlinedIcon,
@@ -24,7 +24,7 @@ const pages = {
     },
     {
       id: 'UpdateDataset',
-      title: 'Update Dataset',
+      title: 'Mettre à jour Dataset',
       type: 'item',
       url: '/admin/updateDataset',
       icon: icons.UploadFileOutlinedIcon,

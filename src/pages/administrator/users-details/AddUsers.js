@@ -77,7 +77,7 @@ const AddUser = () => {
           }}
         >
           <Alert severity="success" onClose={() => setOpenSnackbar(false)}>
-            User added successfully!
+            Utilisateur ajouté avec succès !
           </Alert>
         </Snackbar>
         <Formik
@@ -89,15 +89,18 @@ const AddUser = () => {
             role_id: ''
           }}
           validationSchema={Yup.object().shape({
-            firstname: Yup.string().max(255).required('Firstname is required'),
-            lastname: Yup.string().max(255).required('Lastname is required'),
-            role_id: Yup.number().required('Role is required'),
+            firstname: Yup.string().max(255).required('Le prénom est requis'),
+            lastname: Yup.string().max(255).required('Le nom de famille est requis'),
+            role_id: Yup.number().required('Le rôle est requis'),
             email: Yup.string()
-              .email('Must be a valid email')
+              .email('Doit être une adresse e-mail valide')
               .max(255)
-              .matches(/@djezzy\.dz$/, 'Email must end with @djezzy.dz')
-              .required('Email is required'),
-            password: Yup.string().min(6, 'Password must be at least 6 characters').max(255).required('Password is required')
+              .matches(/@djezzy\.dz$/, "L'e-mail doit se terminer par @djezzy.dz")
+              .required("L'adresse e-mail est requise"),
+            password: Yup.string()
+              .min(6, 'Le mot de passe doit contenir au moins 6 caractères')
+              .max(255)
+              .required('Le mot de passe est requis')
           })}
           onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
             try {
@@ -136,7 +139,7 @@ const AddUser = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <Stack spacing={1}>
-                    <InputLabel htmlFor="firstname-signup">First Name</InputLabel>
+                    <InputLabel htmlFor="firstname-signup">Prénom</InputLabel>
                     <OutlinedInput
                       id="firstname-signup"
                       type="text"
@@ -156,7 +159,7 @@ const AddUser = () => {
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Stack spacing={1}>
-                    <InputLabel htmlFor="lastname-signup">Last Name</InputLabel>
+                    <InputLabel htmlFor="lastname-signup">Nom de famille</InputLabel>
                     <OutlinedInput
                       fullWidth
                       id="lastname-signup"
@@ -176,7 +179,7 @@ const AddUser = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <FormControl fullWidth>
-                    <InputLabel id="role">Role</InputLabel>
+                    <InputLabel id="role">Rôle</InputLabel>
                     <Select
                       labelId="role"
                       id="role_id"
@@ -206,7 +209,7 @@ const AddUser = () => {
 
                 <Grid item xs={12}>
                   <Stack spacing={1}>
-                    <InputLabel htmlFor="email-signup">Email Address</InputLabel>
+                    <InputLabel htmlFor="email-signup">Adresse e-mail</InputLabel>
                     <OutlinedInput
                       fullWidth
                       id="email-login"
@@ -227,7 +230,7 @@ const AddUser = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <Stack spacing={1}>
-                    <InputLabel htmlFor="password-signup">Password</InputLabel>
+                    <InputLabel htmlFor="password-signup">Mot de passe</InputLabel>
                     <OutlinedInput
                       fullWidth
                       error={Boolean(touched.password && errors.password)}
@@ -284,7 +287,7 @@ const AddUser = () => {
               <Box mt={2} display="flex" justifyContent="flex-end">
                 <AnimateButton>
                   <Button color="primary" disabled={isSubmitting} type="submit" variant="contained">
-                    Submit
+                    Ajouter
                   </Button>
                 </AnimateButton>
               </Box>

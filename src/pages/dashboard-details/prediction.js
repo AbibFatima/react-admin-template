@@ -53,7 +53,7 @@ const Prediction = () => {
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Stack justifyContent="center" alignItems="center">
-              <Typography variant="h3">Form Customer Prediction</Typography>
+              <Typography variant="h3">Formulaire Prédiction client</Typography>
             </Stack>
           </Grid>
           <Grid item xs={12}>
@@ -65,8 +65,8 @@ const Prediction = () => {
                   submit: null
                 }}
                 validationSchema={Yup.object().shape({
-                  idClient: Yup.string().max(6).required('ID Client is required'),
-                  phonenumber: Yup.string().matches(phoneRegExp, 'Phone number is not valid').required('Phone number is required')
+                  idClient: Yup.string().max(6).required("L'dentifiant du client est requis"),
+                  phonenumber: Yup.string().matches(phoneRegExp, 'N° de téléphone est non valide').required('N° de téléphone est requis')
                 })}
                 onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
                   try {
@@ -81,13 +81,13 @@ const Prediction = () => {
                     if (response.ok) {
                       setStatus({
                         success: true,
-                        message: 'Prediction successful!',
+                        message: 'Prédiction réussie !',
                         prediction: data.prediction[0],
                         probability: data.probability
                       });
                       setSubmitting(false);
                     } else {
-                      const errorMessage = data.error || 'Something went wrong';
+                      const errorMessage = data.error || "Quelque chose n'a pas fonctionné";
                       setErrors({ submit: errorMessage });
                       setSubmitting(false);
                     }
@@ -104,7 +104,7 @@ const Prediction = () => {
                     <Grid container spacing={3}>
                       <Grid item xs={12} md={6}>
                         <Stack spacing={1}>
-                          <InputLabel htmlFor="idClient-prediction">ID Customer</InputLabel>
+                          <InputLabel htmlFor="idClient-prediction">Identifiant du client</InputLabel>
                           <Autocomplete
                             id="id-client"
                             options={clientOptions}
@@ -118,7 +118,7 @@ const Prediction = () => {
                                 {...params}
                                 name="idClient"
                                 onBlur={handleBlur}
-                                placeholder="ID"
+                                placeholder="123456"
                                 fullWidth
                                 error={Boolean(touched.idClient && errors.idClient)}
                                 helperText={touched.idClient && errors.idClient}
@@ -129,7 +129,7 @@ const Prediction = () => {
                       </Grid>
                       <Grid item xs={12} md={6}>
                         <Stack spacing={1}>
-                          <InputLabel htmlFor="phonenumber-prediction">Phone Number</InputLabel>
+                          <InputLabel htmlFor="phonenumber-prediction">N° de téléphone</InputLabel>
                           <Autocomplete
                             id="phonenumber"
                             options={phoneOptions}
@@ -140,7 +140,7 @@ const Prediction = () => {
                                 {...params}
                                 name="phonenumber"
                                 onBlur={handleBlur}
-                                placeholder="Phone Number"
+                                placeholder="+213"
                                 fullWidth
                                 error={Boolean(touched.phonenumber && errors.phonenumber)}
                                 helperText={touched.phonenumber && errors.phonenumber}
@@ -166,7 +166,7 @@ const Prediction = () => {
                             variant="contained"
                             color="primary"
                           >
-                            Predict
+                            Prédire
                           </Button>
                         </AnimateButton>
                       </Grid>
@@ -179,7 +179,7 @@ const Prediction = () => {
                               <Box mt={3} display="flex" justifyContent="space-around" flexWrap="wrap">
                                 <Box mt={12}>
                                   <Stack spacing={1} justifyContent="center" alignItems="center">
-                                    <Typography variant="h2">The Client {values.idClient} is predicted to churn</Typography>
+                                    <Typography variant="h2">Le client {values.idClient} est susceptible de se désabonner</Typography>
                                   </Stack>
                                 </Box>
                                 <Box mt={2}>
@@ -255,7 +255,7 @@ const Prediction = () => {
                                       stroke: {
                                         lineCap: 'round'
                                       },
-                                      labels: ['Churn Probability']
+                                      labels: ['Probabilité de churn']
                                     }}
                                     series={[status.probability]}
                                     type="radialBar"
@@ -268,7 +268,9 @@ const Prediction = () => {
                             <Grid container spacing={3}>
                               <Grid item xs={12}>
                                 <Box mt={2}>
-                                  <Typography variant="body1">The Client with the ID {values.idClient} isn t predicted to churn</Typography>
+                                  <Typography variant="body1">
+                                    Le client {values.idClient} n est pas susceptible de se désabonner
+                                  </Typography>
                                 </Box>
                               </Grid>
                             </Grid>

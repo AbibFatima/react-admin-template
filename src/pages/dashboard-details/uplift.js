@@ -42,8 +42,8 @@ const Uplift = () => {
           </Box>
         </Grid>
         <Box mt={2} display="flex" justifyContent="center" alignItems="center">
-          <FormControl sx={{ minWidth: 120 }}>
-            <InputLabel id="select-decile-label">Select Decile</InputLabel>
+          <FormControl sx={{ minWidth: 180 }}>
+            <InputLabel id="select-decile-label">Choisir un décile</InputLabel>
             <Select labelId="select-decile-label" value={selectedDecile} onChange={handleChange}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((decile) => (
                 <MenuItem key={decile} value={decile}>

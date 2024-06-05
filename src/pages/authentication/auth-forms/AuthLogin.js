@@ -1,20 +1,20 @@
 import React from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 // material-ui
 import {
   Button,
-  Checkbox,
-  FormControlLabel,
+  //Checkbox,
+  //FormControlLabel,
   FormHelperText,
   Grid,
-  Link,
+  //Link,
   IconButton,
   InputAdornment,
   InputLabel,
   OutlinedInput,
-  Stack,
-  Typography
+  Stack
+  //Typography
 } from '@mui/material';
 
 // third party
@@ -31,7 +31,7 @@ import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import secureLocalStorage from 'react-secure-storage';
 
 const AuthLogin = () => {
-  const [checked, setChecked] = React.useState(false);
+  //const [checked, setChecked] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const navigate = useNavigate();
 
@@ -52,8 +52,8 @@ const AuthLogin = () => {
           submit: null
         }}
         validationSchema={Yup.object().shape({
-          email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
-          password: Yup.string().max(255).required('Password is required')
+          email: Yup.string().email('Doit être une adresse e-mail valide').max(255).required('Adresse e-mail est requise'),
+          password: Yup.string().max(255).required('Mot de passe est requis')
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
@@ -71,10 +71,10 @@ const AuthLogin = () => {
               secureLocalStorage.setItem('token', data.access_token);
               secureLocalStorage.setItem('name', data.firstname);
 
-              if (data.role.includes('Admin')) {
+              if (data.role.includes('Administrateur')) {
                 secureLocalStorage.setItem('admin', true);
                 navigate('/admin/dashboard');
-              } else if (data.role.includes('Specialist')) {
+              } else if (data.role.includes('Spécialist')) {
                 secureLocalStorage.setItem('specialist', true);
                 navigate('/dashboard/default');
               }
@@ -83,7 +83,7 @@ const AuthLogin = () => {
               setSubmitting(false);
             } else {
               const errorData = await response.json();
-              setErrors({ submit: errorData.message || 'Invalid credentials' });
+              setErrors({ submit: errorData.message || "Informations d'identification invalides" });
               setStatus({ success: false });
               setSubmitting(false);
             }
@@ -100,7 +100,7 @@ const AuthLogin = () => {
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Stack spacing={1}>
-                  <InputLabel htmlFor="email-login">Email Address</InputLabel>
+                  <InputLabel htmlFor="email-login">Adresse e-mail</InputLabel>
                   <OutlinedInput
                     id="email-login"
                     type="email"
@@ -121,7 +121,7 @@ const AuthLogin = () => {
               </Grid>
               <Grid item xs={12}>
                 <Stack spacing={1}>
-                  <InputLabel htmlFor="password-login">Password</InputLabel>
+                  <InputLabel htmlFor="password-login">Mot de passe</InputLabel>
                   <OutlinedInput
                     fullWidth
                     error={Boolean(touched.password && errors.password)}
@@ -154,7 +154,7 @@ const AuthLogin = () => {
                 </Stack>
               </Grid>
 
-              <Grid item xs={12} sx={{ mt: -1 }}>
+              {/* <Grid item xs={12} sx={{ mt: -1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
                   <FormControlLabel
                     control={
@@ -172,7 +172,7 @@ const AuthLogin = () => {
                     Forgot Password?
                   </Link>
                 </Stack>
-              </Grid>
+              </Grid> */}
               {errors.submit && (
                 <Grid item xs={12}>
                   <FormHelperText error>{errors.submit}</FormHelperText>
@@ -181,7 +181,7 @@ const AuthLogin = () => {
               <Grid item xs={12}>
                 <AnimateButton>
                   <Button disableElevation disabled={isSubmitting} fullWidth size="large" type="submit" variant="contained" color="primary">
-                    Login
+                    Connexion
                   </Button>
                 </AnimateButton>
               </Grid>

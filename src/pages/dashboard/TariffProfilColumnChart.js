@@ -101,8 +101,8 @@ const TariffProfilColumnChart = () => {
         const tariffProfiles = data.map((item) => item.Tariff_Profile);
 
         setSeries([
-          { name: 'Churners Count', data: churnersCount },
-          { name: 'Non-churners Count', data: nonchurnersCount }
+          { name: 'Nombre Churners', data: churnersCount },
+          { name: 'Nombre Non-Churners', data: nonchurnersCount }
         ]);
 
         setOptions((prevState) => ({

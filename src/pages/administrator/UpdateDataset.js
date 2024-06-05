@@ -54,20 +54,20 @@ export default function UpdateDataset() {
           const response = JSON.parse(xhr.responseText);
           if (response.success) {
             setFileList((prevList) => prevList.map((item) => (item.uid === uid ? { ...item, status: 'done', percent: 100 } : item)));
-            setUploadStatus({ type: 'success', message: `${file.name} file uploaded successfully.` });
+            setUploadStatus({ type: 'success', message: `${file.name} fichier téléchargé avec succès.` });
           } else {
             setFileList((prevList) => prevList.map((item) => (item.uid === uid ? { ...item, status: 'error' } : item)));
-            setUploadStatus({ type: 'error', message: `${file.name} file upload failed.` });
+            setUploadStatus({ type: 'error', message: `${file.name} le téléchargement du fichier a échoué.` });
           }
         } else {
           setFileList((prevList) => prevList.map((item) => (item.uid === uid ? { ...item, status: 'error' } : item)));
-          setUploadStatus({ type: 'error', message: `${file.name} file upload failed.` });
+          setUploadStatus({ type: 'error', message: `${file.name} le téléchargement du fichier a échoué.` });
         }
       };
 
       xhr.onerror = () => {
         setFileList((prevList) => prevList.map((item) => (item.uid === uid ? { ...item, status: 'error' } : item)));
-        setUploadStatus({ type: 'error', message: `${file.name} file upload failed.` });
+        setUploadStatus({ type: 'error', message: `${file.name} le téléchargement du fichier a échoué.` });
       };
 
       xhr.send(formData);
@@ -94,10 +94,13 @@ export default function UpdateDataset() {
               <input {...getInputProps()} />
               <CloudUploadIcon fontSize="large" />
               <Typography variant="h6">
-                {isDragActive ? 'Drop the files here ...' : 'Click or drag a CSV file to this area to upload'}
+                {isDragActive
+                  ? 'Déposer les fichiers ici ...'
+                  : 'Cliquer ou faire glisser un fichier CSV dans cette zone pour le télécharger'}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                Support for a single or bulk upload. Strictly prohibited from uploading company data or other banned files.
+                Prise en charge d&apos;un téléchargement unique ou en masse. Il est strictement interdit de télécharger des données ne
+                provenant pas de l&apos;entreprise ou d&apos;autres fichiers interdits.
               </Typography>
             </DropzoneContainer>
           </MainCard>
@@ -113,12 +116,12 @@ export default function UpdateDataset() {
                   {file.status === 'uploading' && <LinearProgress variant="determinate" value={file.percent} />}
                   {file.status === 'done' && (
                     <Typography variant="body2" color="success.main">
-                      Uploaded
+                      Téléchargé
                     </Typography>
                   )}
                   {file.status === 'error' && (
                     <Typography variant="body2" color="error.main">
-                      Upload failed
+                      Échec du téléchargement
                     </Typography>
                   )}
                 </Box>

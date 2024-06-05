@@ -92,7 +92,7 @@ const LineChartTotalChurn = ({ slot }) => {
         },
         tickAmount: churnData.length,
         title: {
-          text: 'Time (Week/Month)',
+          text: 'Période (semaine/mois)',
           align: 'left',
           margin: 3,
           floating: false,
@@ -111,7 +111,7 @@ const LineChartTotalChurn = ({ slot }) => {
           }
         },
         title: {
-          text: 'Count',
+          text: 'Nombre total de désabonnements',
           align: 'right',
           margin: 3,
           floating: false,

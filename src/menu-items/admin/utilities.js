@@ -28,7 +28,7 @@ const icons = {
 
 const utilities = {
   id: 'utilities',
-  title: 'Utilities',
+  title: 'Services',
   type: 'group',
   children: [
     {
@@ -40,7 +40,7 @@ const utilities = {
     },
     {
       id: 'util-prediction',
-      title: 'Prediction',
+      title: 'Prédiction',
       type: 'item',
       url: '/admin/prediction',
       icon: icons.FundOutlined

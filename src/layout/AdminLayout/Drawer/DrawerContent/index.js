@@ -94,7 +94,7 @@ const DrawerContent = () => {
             <ListItemText
               primary={
                 <Typography variant="h6" sx={{ color: 'text.primary' }}>
-                  Log out
+                  Déconnecter
                 </Typography>
               }
             />

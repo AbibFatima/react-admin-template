@@ -66,7 +66,7 @@ def get_users():
     current_admin_id = get_jwt_identity()
     
     if not current_admin_id:
-        return jsonify({'error': 'Invalid or expired token'}), 401
+        return jsonify({'error': 'Jeton invalide ou expiré'}), 401
     user = User.query.filter_by(email=current_admin_id).first()
     
     users = User.query.all()
@@ -81,7 +81,7 @@ def get_users():
 def get_user(user_id):
     user = User.query.get(user_id)
     if user is None:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
     return jsonify(user_to_dict(user))
 
 #_________________________________________________
@@ -98,13 +98,13 @@ def create_user():
     user_exists = User.query.filter_by(email=email).first() is not None
  
     if user_exists:
-        return jsonify({"error": "Email already exists"}), 409
+        return jsonify({"error": "L'email existe déjà"}), 409
      
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     
     role = Role.query.get(role_id)
     if not role:
-        return jsonify({"error": "Role not found"}), 404
+        return jsonify({"error": "Rôle introuvable"}), 404
     
     new_user = User(firstname=firstname, lastname=lastname, email=email, password=hashed_password, role_id=role_id)
     db.session.add(new_user)
@@ -119,7 +119,7 @@ def create_user():
 def update_user(user_id):
     user = User.query.get(user_id)
     if user is None:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
 
     data = request.json
     
@@ -129,7 +129,7 @@ def update_user(user_id):
         if "email" in data and data["email"] != user.email:
             user_exists = User.query.filter(User.email == data["email"], User.id != user_id).first() is not None
             if user_exists:
-                return jsonify({"error": "Email already exists"}), 409
+                return jsonify({"error": "L'email existe déjà"}), 409
     
     # Update user attributes
     user.firstname = data.get("firstname", user.firstname)
@@ -146,7 +146,7 @@ def update_user(user_id):
         if role:
             user.role_id = role.id
         else:
-            return jsonify({'error': 'Role not found'}), 404
+            return jsonify({'error': 'Rôle introuvable'}), 404
 
     db.session.commit()
     
@@ -160,7 +160,7 @@ def update_user(user_id):
 def delete_user(user_id):
     user = User.query.get(user_id)
     if user is None:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
     db.session.delete(user)
     db.session.commit()
     return '', 204
@@ -180,7 +180,7 @@ def get_roles():
 def get_role(role_id):
     role = Role.query.get(role_id)
     if role is None:
-        return jsonify({'error': 'Role not found'}), 404
+        return jsonify({'error': 'Rôle introuvable'}), 404
     return jsonify(role_to_dict(role))
 
 #_________________________________________________
@@ -637,9 +637,10 @@ def get_max_churn_profile():
     try:
         with app.app_context():
             sql_query = """
-                SELECT "Tariff_profile", SUM(CASE WHEN flag = 1 THEN 1 ELSE 0 END) AS churnersCount
-                FROM client_data_predictions
-                GROUP BY "Tariff_profile"
+                SELECT p.tariff_profile AS tariff_profile_name, SUM(CASE WHEN cdp.pred_flag = 1 THEN 1 ELSE 0 END) AS churnersCount
+                FROM client_data_predictions cdp
+                JOIN profiles p ON cdp."Tariff_profile" = p.id_profile
+                GROUP BY p.tariff_profile
                 ORDER BY churnersCount DESC
                 LIMIT 1;
             """
@@ -700,6 +701,7 @@ def get_segments_chart_data():
         print('Error fetching donut chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
+#______________________________________________________
 @app.route('/maxTenureSegments', methods=['GET'])
 def get_max_tenure_segments_data():
     try:
@@ -743,7 +745,7 @@ def get_max_tenure_segments_data():
         print('Error fetching max tenure segments data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
     
-    
+#______________________________________________________
 #Segment_tenure
 @app.route('/TenureSegments', methods=['GET'])
 def get_tenure_segments_chart_data():
@@ -877,7 +879,7 @@ def uplift_method():
     
     return churners_per_decile, deciles_data
 
-
+#______________________________________________________
 @app.route('/uplift', methods=['GET'])
 def get_column_chart_data():
     try:
@@ -887,8 +889,7 @@ def get_column_chart_data():
         print('Error fetching column chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
-
-
+#______________________________________________________
 @app.route('/download-decile', methods=['GET'])
 def download_decile():
     try:
@@ -941,7 +942,7 @@ def predict_customer():
         print(f"Input Phone Number: {input_phone_number} (Type: {type(input_phone_number)})")
 
         if db_phone_number != input_phone_number:
-            return jsonify({"error": "Phone number does not match the ID Client"}), 401
+            return jsonify({"error": "Le numéro de téléphone ne correspond pas à l'ID du client"}), 401
 
         client_data_dict = {
             "Tenure": client.tenure,
@@ -1014,7 +1015,6 @@ def get_client_data():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 
-
 @app.route('/client-phone/<int:id>', methods=['GET'])
 def get_client_phone(id):
     try:
@@ -1064,10 +1064,10 @@ def login_user():
         user = User.query.filter_by(email=email).first()
 
         if user is None:
-            return jsonify({"error": "Unauthorized Access"}), 401
+            return jsonify({"error": "Accès non autorisé"}), 401
 
         if not bcrypt.check_password_hash(user.password, password):
-            return jsonify({"error": "Unauthorized"}), 401
+            return jsonify({"error": "Non autorisé"}), 401
 
         session["user_id"] = user.id
         print("User ID set in session:", session.get("user_id"))
@@ -1091,7 +1091,7 @@ def login_user():
 def logout():
     try:
         session.pop("user_id", None)
-        response = jsonify({"msg": "logout successful"})
+        response = jsonify({"msg": "déconnexion réussie"})
         unset_jwt_cookies(response)
         return response
     except Exception as e:
