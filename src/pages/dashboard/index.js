@@ -56,7 +56,6 @@ const DashboardDefault = () => {
       try {
         const response = await fetch('http://localhost:5000/dashboard/maxchurnprofile');
         const data = await response.json();
-        console.log(data);
         setMaxChurnersData(data);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -79,8 +78,6 @@ const DashboardDefault = () => {
         throw new Error('Failed to update dataset');
       }
 
-      const result = await response.json();
-      console.log(result.message);
       window.location.reload();
       // Optionally, you can refresh the data after the dataset update
       fetchData();
@@ -105,7 +102,6 @@ const DashboardDefault = () => {
           count={analyticsData.churnersCount.toString()}
           percentage={analyticsData.churnersPercentage}
           color="warning"
-          isLoss
         />
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>

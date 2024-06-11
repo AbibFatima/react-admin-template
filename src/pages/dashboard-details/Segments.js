@@ -7,22 +7,22 @@ import AnalyticEcommerce from 'components/cards/statistics/AnalyticEcommerce';
 
 const Segments = () => {
   const [segmentData, setSegmentData] = useState({
-    maxChurnersTenureSegment: 0,
+    maxChurnersTenureSegment: '',
     maxChurnersCount: 0,
     maxChurnersPercentage: 0,
-    nonChurnersCount: 0,
-    nonChurnersPercentage: 0
+    maxNonChurnersTenureSegment: '',
+    maxNonChurnersCount: 0,
+    maxNonChurnersPercentage: 0
   });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('//localhost:5000/maxTenureSegments');
+        const response = await fetch('http://localhost:5000/maxTenureSegments');
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        const responseData = await response.text();
-        const data = JSON.parse(responseData);
+        const data = await response.json();
         setSegmentData(data);
       } catch (error) {
         console.error('Error fetching tenure segments data:', error);
@@ -34,14 +34,14 @@ const Segments = () => {
 
   return (
     <ComponentSkeleton>
-      <Grid container rowSpacing={4.5} columnSpacing={5.75}>
+      <Grid container rowSpacing={4.5} columnSpacing={5.75} justifyContent="center">
         <Grid item xs={12} sm={6} md={6}>
           <MainCard>
             <Typography variant="h6" color="textSecondary">
               Segment Tenure avec un maximum de désabonnement
             </Typography>
             <AnalyticEcommerce
-              title={segmentData.maxChurnersTenureSegment.toString()}
+              title={segmentData.maxChurnersTenureSegment}
               count={segmentData.maxChurnersCount.toString()}
               percentage={segmentData.maxChurnersPercentage}
             />
@@ -50,12 +50,12 @@ const Segments = () => {
         <Grid item xs={12} sm={6} md={6}>
           <MainCard>
             <Typography variant="h6" color="textSecondary">
-              Nombre de non désabonnement pour max segment tenure
+              Segment Tenure avec un maximum de non désabonnement
             </Typography>
             <AnalyticEcommerce
-              title={segmentData.maxChurnersTenureSegment.toString()}
-              count={segmentData.nonChurnersCount.toString()}
-              percentage={segmentData.nonChurnersPercentage}
+              title={segmentData.maxNonChurnersTenureSegment}
+              count={segmentData.maxNonChurnersCount.toString()}
+              percentage={segmentData.maxNonChurnersPercentage}
             />
           </MainCard>
         </Grid>

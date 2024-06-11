@@ -54,20 +54,20 @@ export default function UpdateDataset() {
           const response = JSON.parse(xhr.responseText);
           if (response.success) {
             setFileList((prevList) => prevList.map((item) => (item.uid === uid ? { ...item, status: 'done', percent: 100 } : item)));
-            setUploadStatus({ type: 'success', message: `${file.name} fichier téléchargé avec succès.` });
+            setUploadStatus({ type: 'success', message: `${file.name} fichier chargé avec succès.` });
           } else {
             setFileList((prevList) => prevList.map((item) => (item.uid === uid ? { ...item, status: 'error' } : item)));
-            setUploadStatus({ type: 'error', message: `${file.name} le téléchargement du fichier a échoué.` });
+            setUploadStatus({ type: 'error', message: `${file.name} le chargement du fichier a échoué.` });
           }
         } else {
           setFileList((prevList) => prevList.map((item) => (item.uid === uid ? { ...item, status: 'error' } : item)));
-          setUploadStatus({ type: 'error', message: `${file.name} le téléchargement du fichier a échoué.` });
+          setUploadStatus({ type: 'error', message: `${file.name} le chargement du fichier a échoué.` });
         }
       };
 
       xhr.onerror = () => {
         setFileList((prevList) => prevList.map((item) => (item.uid === uid ? { ...item, status: 'error' } : item)));
-        setUploadStatus({ type: 'error', message: `${file.name} le téléchargement du fichier a échoué.` });
+        setUploadStatus({ type: 'error', message: `${file.name} le chargement du fichier a échoué.` });
       };
 
       xhr.send(formData);
@@ -99,8 +99,8 @@ export default function UpdateDataset() {
                   : 'Cliquer ou faire glisser un fichier CSV dans cette zone pour le télécharger'}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                Prise en charge d&apos;un téléchargement unique ou en masse. Il est strictement interdit de télécharger des données ne
-                provenant pas de l&apos;entreprise ou d&apos;autres fichiers interdits.
+                Prise en charge d&apos;un chargement unique. Il est strictement interdit de charger des données ne provenant pas de
+                l&apos;entreprise ou d&apos;autres fichiers interdits.
               </Typography>
             </DropzoneContainer>
           </MainCard>
@@ -116,12 +116,12 @@ export default function UpdateDataset() {
                   {file.status === 'uploading' && <LinearProgress variant="determinate" value={file.percent} />}
                   {file.status === 'done' && (
                     <Typography variant="body2" color="success.main">
-                      Téléchargé
+                      Chargé
                     </Typography>
                   )}
                   {file.status === 'error' && (
                     <Typography variant="body2" color="error.main">
-                      Échec du téléchargement
+                      Échec du chargement
                     </Typography>
                   )}
                 </Box>

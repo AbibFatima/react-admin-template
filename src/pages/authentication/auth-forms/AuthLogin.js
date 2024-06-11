@@ -67,7 +67,6 @@ const AuthLogin = () => {
 
             if (response.ok) {
               const data = await response.json();
-              console.log(data.access_token);
               secureLocalStorage.setItem('token', data.access_token);
               secureLocalStorage.setItem('name', data.firstname);
 

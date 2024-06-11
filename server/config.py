@@ -1,5 +1,6 @@
 #import os
 import redis 
+from datetime import timedelta
 
 class ApplicationConfig:
     
@@ -9,6 +10,10 @@ class ApplicationConfig:
     SQLALCHEMY_ECHO = True
     SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:admin@localhost:5432/DjezzyDB'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)  # Token d'accès expire dans 1 heure
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)  # Token de rafraîchissement expire dans 30 jours
+
+    
     
     SESSION_TYPE = "redis"
     SESSION_PERMANENT = False

@@ -53,6 +53,8 @@ export default function UsersTable() {
   const [search, setSearch] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [currentAdminId, setCurrentAdminId] = useState(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState(null);
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -238,6 +240,21 @@ export default function UsersTable() {
       (user.role && user.role.name.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const handleOpenDeleteDialog = (userId) => {
+    setDeleteUserId(userId);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false);
+    setDeleteUserId(null);
+  };
+
+  const handleConfirmDelete = () => {
+    handleDelete(deleteUserId);
+    handleCloseDeleteDialog();
+  };
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" p={2}>
@@ -312,7 +329,7 @@ export default function UsersTable() {
                   </TableCell>
                   <TableCell align="left">
                     <IconButton
-                      onClick={() => handleDelete(row.id)}
+                      onClick={() => handleOpenDeleteDialog(row.id)}
                       color="secondary"
                       disabled={row.id === currentAdminId} // Disable the button for the admin's own account
                     >
@@ -529,6 +546,29 @@ export default function UsersTable() {
             </Button>
           </DialogActions>
         </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>
+          <Typography variant="h4">Confirmer la suppression</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <MainCard>
+            <Typography variant="body1">Êtes-vous sûr de vouloir supprimer cet utilisateur ?</Typography>
+            <Typography variant="body1">
+              <strong>Cette action est irréversible !</strong>
+            </Typography>
+          </MainCard>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="primary">
+            Annuler
+          </Button>
+          <Button onClick={handleConfirmDelete} color="secondary">
+            Supprimer
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

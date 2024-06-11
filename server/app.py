@@ -1,25 +1,16 @@
 # flask import
-from flask import Flask, request, jsonify, session, make_response, send_file
-import io
-from io import StringIO
-from flask import redirect, url_for
+from flask import Flask, request, jsonify, session, make_response
 from flask_session import Session
 from flask_bcrypt import Bcrypt
-from flask_cors import CORS, cross_origin
-from functools import wraps
-from datetime import datetime, timedelta
-from sqlalchemy import func, case, inspect
-from sqlalchemy import create_engine, Table, Column, Integer, Float, MetaData
+from flask_cors import CORS
+from sqlalchemy import create_engine
 from sqlalchemy.sql import text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from flask_migrate import Migrate
-import pandas as pd
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import delete
-from sqlalchemy.exc import SQLAlchemyError
+from flask_migrate import Migrate
+
+
 # project db, config import 
-from models import db, admin, User, Role, ChrunTrend, ClientInfos, Sous_segment, Profiles, TestDataset
+from models import db, User, Role, ClientInfos, Sous_segment, Profiles, Prediction
 from config import ApplicationConfig 
 
 #from utils import generate_sitemap, APIException 
@@ -27,12 +18,10 @@ from config import ApplicationConfig
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
-from flask_jwt_extended import JWTManager, unset_jwt_cookies, get_jwt
+from flask_jwt_extended import JWTManager, unset_jwt_cookies
 
 import joblib
 import pandas as pd
-import csv
-import io
 ## ==============================|| FLASK - BACKEND ||============================== ##
 
 app = Flask(__name__)
@@ -47,8 +36,7 @@ bcrypt = Bcrypt(app)
 server_session = Session(app)
 CORS(app, supports_credentials=True)
 
-db.init_app(app)  
-admin.init_app(app)
+db.init_app(app) 
 with app.app_context():
     db.create_all()
 
@@ -207,88 +195,96 @@ def role_to_dict(role):
 #_________________________________________________
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'message': 'No file part'})
+    try : 
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': 'No file part'})
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'success': False, 'message': 'No selected file'})
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No selected file'})
 
-    if file and file.filename.endswith('.csv'):
-        # Read CSV file into a pandas DataFrame
-        df = pd.read_csv(file)
-        
-        # Mapping between CSV column names and database column names
-        column_mapping = {
-            'id_client': 'id_client',
-            'Phone_Number': 'phone_number',
-            'Tenure': 'tenure',
-            'Seg_Tenure': 'seg_tenure',
-            'Pasivity_G': 'pasivity_g',
-            'Value_Segment':'value_segment', 
-            'Tariff_Profile':'tariff_profile', 
-            'CNT_OUT_VOICE_ONNET_M6':'cnt_out_voice_onnet_m6', 
-            'CNT_OUT_VOICE_ONNET_M5':'cnt_out_voice_onnet_m5', 
-            'CNT_OUT_VOICE_OFFNET_M6':'cnt_out_voice_offnet_m6', 
-            'CNT_OUT_VOICE_OFFNET_M5':'cnt_out_voice_offnet_m5', 
-            'REV_OUT_VOICE_OFFNET_W4':'rev_out_voice_offnet_w4' ,
-            'TRAF_OUT_VOICE_OFFNET_W4':'traf_out_voice_offnet_w4' ,
-            'CNT_OUT_VOICE_ROAMING_W4':'cnt_out_voice_roaming_w4' ,
-            'REV_DATA_PAG_W4':'rev_data_pag_w4', 
-            'REV_REFILL_M5':'rev_refill_m5' ,
-            'CNT_REFILL_M6':'cnt_refill_m6' ,
-            'CNT_REFILL_M5':'cnt_refill_m5' ,
-            'CNT_REFILL_W4':'cnt_refill_w4' ,
-            'REV_REFILL_W4':'rev_refill_w4' ,
-            'FLAG_Inactive_3Days':'flag_inactive_3days' ,
-            'Count_Inactive_3Days':'count_inactive_3days' ,
-            'Count_Inactive_4Days':'count_inactive_4days' ,
-            'Count_Inactive_5Days':'count_inactive_5days' ,
-            'Count_Inactive_10Days_and_more':'count_inactive_10days_and_more' ,
-            'CONSUMER_TYPE_M5':'consumer_type_m5' ,
-            'CONSUMER_TYPE_M6':'consumer_type_m6' ,
-            'TRAF_IN_VOICE_ONNET_M5':'traf_in_voice_onnet_m5' ,
-            'CNT_IN_VOICE_INTERNATIONAL_M5':'cnt_in_voice_international_m5' ,
-            'CNT_IN_SMS_ONNET_M4':'cnt_in_sms_onnet_m4' ,
-            'TRAF_IN_VOICE_INTERNATIONAL_W4':'traf_in_voice_international_w4' ,
-            'CNT_IN_SMS_OFFNET_W4':'cnt_in_sms_offnet_w4' ,
-            'SLOPE_SD_VI_ONNET_DUR':'slope_sd_vi_onnet_dur' ,
-            'DEGREES_SD_VI_ONNET_DUR':'degrees_sd_vi_onnet_dur' ,
-            'SLOPE_VI_OFFNET_DUR':'slope_vi_offnet_dur' ,
-            'SLOPE_D__FREE_VOL':'slope_d__free_vol' ,
-            'Rev_Month_Before_Current_Month':'rev_month_before_current_month' ,
-            'TRAF_OUT_VOICE_ONNET_M6':'traf_out_voice_onnet_m6',
-            'TRAF_OUT_VOICE_ONNET_M4':'traf_out_voice_onnet_m4',
-            'TRAF_OUT_VOICE_ONNET_M3':'traf_out_voice_onnet_m3',
-            'REV_BUNDLE_M6':'rev_bundle_m6',
-            'TRAF_OUT_VOICE_ONNET_W4':'traf_out_voice_onnet_w4',
-            'CNT_OUT_VOICE_ONNET_W4':'cnt_out_voice_onnet_w4',
-            'SLOPE_V_ONNET_DUR':'slope_v_onnet_dur',
-            'SLOPE_SD_VI_OFFNET_DUR':'slope_sd_vi_offnet_dur',
-            'flag':'flag'
-        }
+        if file and file.filename.endswith('.csv'):
+            
+            # Read CSV file into a pandas DataFrame
+            df = pd.read_csv(file)
+            
+            # Mapping between CSV column names and database column names
+            column_mapping = {
+                'id_client': 'id_client',
+                'Phone_Number': 'phone_number',
+                'Tenure': 'tenure',
+                'Seg_Tenure': 'seg_tenure',
+                'Pasivity_G': 'pasivity_g',
+                'Value_Segment':'value_segment', 
+                'Tariff_Profile':'tariff_profile', 
+                'CNT_OUT_VOICE_ONNET_M6':'cnt_out_voice_onnet_m6', 
+                'CNT_OUT_VOICE_ONNET_M5':'cnt_out_voice_onnet_m5', 
+                'CNT_OUT_VOICE_OFFNET_M6':'cnt_out_voice_offnet_m6', 
+                'CNT_OUT_VOICE_OFFNET_M5':'cnt_out_voice_offnet_m5', 
+                'REV_OUT_VOICE_OFFNET_W4':'rev_out_voice_offnet_w4' ,
+                'TRAF_OUT_VOICE_OFFNET_W4':'traf_out_voice_offnet_w4' ,
+                'CNT_OUT_VOICE_ROAMING_W4':'cnt_out_voice_roaming_w4' ,
+                'REV_DATA_PAG_W4':'rev_data_pag_w4', 
+                'REV_REFILL_M5':'rev_refill_m5' ,
+                'CNT_REFILL_M6':'cnt_refill_m6' ,
+                'CNT_REFILL_M5':'cnt_refill_m5' ,
+                'CNT_REFILL_W4':'cnt_refill_w4' ,
+                'REV_REFILL_W4':'rev_refill_w4' ,
+                'FLAG_Inactive_3Days':'flag_inactive_3days' ,
+                'Count_Inactive_3Days':'count_inactive_3days' ,
+                'Count_Inactive_4Days':'count_inactive_4days' ,
+                'Count_Inactive_5Days':'count_inactive_5days' ,
+                'Count_Inactive_10Days_and_more':'count_inactive_10days_and_more' ,
+                'CONSUMER_TYPE_M5':'consumer_type_m5' ,
+                'CONSUMER_TYPE_M6':'consumer_type_m6' ,
+                'TRAF_IN_VOICE_ONNET_M5':'traf_in_voice_onnet_m5' ,
+                'CNT_IN_VOICE_INTERNATIONAL_M5':'cnt_in_voice_international_m5' ,
+                'CNT_IN_SMS_ONNET_M4':'cnt_in_sms_onnet_m4' ,
+                'TRAF_IN_VOICE_INTERNATIONAL_W4':'traf_in_voice_international_w4' ,
+                'CNT_IN_SMS_OFFNET_W4':'cnt_in_sms_offnet_w4' ,
+                'SLOPE_SD_VI_ONNET_DUR':'slope_sd_vi_onnet_dur' ,
+                'DEGREES_SD_VI_ONNET_DUR':'degrees_sd_vi_onnet_dur' ,
+                'SLOPE_VI_OFFNET_DUR':'slope_vi_offnet_dur' ,
+                'SLOPE_D__FREE_VOL':'slope_d__free_vol' ,
+                'Rev_Month_Before_Current_Month':'rev_month_before_current_month' ,
+                'TRAF_OUT_VOICE_ONNET_M6':'traf_out_voice_onnet_m6',
+                'TRAF_OUT_VOICE_ONNET_M4':'traf_out_voice_onnet_m4',
+                'TRAF_OUT_VOICE_ONNET_M3':'traf_out_voice_onnet_m3',
+                'REV_BUNDLE_M6':'rev_bundle_m6',
+                'TRAF_OUT_VOICE_ONNET_W4':'traf_out_voice_onnet_w4',
+                'CNT_OUT_VOICE_ONNET_W4':'cnt_out_voice_onnet_w4',
+                'SLOPE_V_ONNET_DUR':'slope_v_onnet_dur',
+                'SLOPE_SD_VI_OFFNET_DUR':'slope_sd_vi_offnet_dur',
+                'flag':'flag'
+            }
 
-        # Rename DataFrame columns to match database column names
-        df.rename(columns=column_mapping, inplace=True)
-        
-        try:
-            with engine.connect() as connection: 
-                # Create a delete statement targeting the table
-                delete_statement = delete(ClientInfos)
+            # Rename DataFrame columns to match database column names
+            df.rename(columns=column_mapping, inplace=True)
+            
+            try:
+                with engine.connect() as connection: 
+                    # Create a delete statement targeting the table 'clientdataset'
+                    delete_client_statement = delete(ClientInfos)
 
-                # Execute the delete statement
-                connection.execute(delete_statement)
+                    # Create a delete statement targeting the table 'prediction'
+                    delete_prediction_statement = delete(Prediction)
 
-                # Commit the transaction
-                connection.commit()
-                
-                # Insert new data from the DataFrame
-                df.to_sql('clientdataset', con=connection, if_exists='append', index=False)
-                print("Data inserted successfully")
-                
-            return jsonify({'success': True, 'message': 'File uploaded successfully'})
-        except Exception as e:
-            return jsonify({'success': False, 'message': str(e)})
+                    # Execute the delete statements
+                    connection.execute(delete_prediction_statement)
+                    connection.execute(delete_client_statement)
+
+                    # Commit the transaction
+                    connection.commit()
+                    
+                    # Insert new data from the DataFrame
+                    df.to_sql('clientdataset', con=connection, if_exists='append', index=False)
+                    
+                return jsonify({'success': True, 'message': 'File uploaded successfully'})
+            except Exception as e:
+                return jsonify({'success': False, 'message': str(e)})
+    except Exception as e:
+        print('Error fetching analytics data:', e)
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 #_________________________________________________
 #          UPDATE TO THE NEW DATASET 
@@ -363,7 +359,6 @@ def predict_dataset():
             })
             
         df = pd.DataFrame(data)
-        print(df)
         
         X = df.drop(columns=['flag', 'id_client','phone_number','Tariff_profile'])
         y = df['flag']
@@ -373,81 +368,26 @@ def predict_dataset():
         predicted_proba_df = pd.DataFrame(predicted_probabilities, columns=[f'prob_{i}' for i in range(predicted_probabilities.shape[1])])
         
         df['pred_flag'] = y_pred
-        df = pd.concat([df, predicted_proba_df], axis=1)
+        df = pd.concat([df[['id_client', 'flag', 'pred_flag']], predicted_proba_df], axis=1)
         
-        # Convert DataFrame to SQLAlchemy table and create view
-        metadata = MetaData()
-
-        client_data_table = Table('client_data_predictions', metadata,
-            Column('id', Integer, primary_key=True, autoincrement=True),
-            Column('Tenure', Integer),
-            Column('Seg_Tenure', Integer),
-            Column('Pasivity_G', Integer),
-            Column('Value_Segment', Integer),
-            Column('CNT_OUT_VOICE_ONNET_M6', Integer),
-            Column('CNT_OUT_VOICE_ONNET_M5', Integer),
-            Column('CNT_OUT_VOICE_OFFNET_M6', Integer),
-            Column('CNT_OUT_VOICE_OFFNET_M5', Integer),
-            Column('REV_OUT_VOICE_OFFNET_W4', Integer),
-            Column('TRAF_OUT_VOICE_OFFNET_W4', Integer),
-            Column('CNT_OUT_VOICE_ROAMING_W4', Integer),
-            Column('REV_DATA_PAG_W4', Integer),
-            Column('REV_REFILL_M5', Integer),
-            Column('CNT_REFILL_M6', Integer),
-            Column('CNT_REFILL_M5', Integer),
-            Column('CNT_REFILL_W4', Integer),
-            Column('REV_REFILL_W4', Integer),
-            Column('FLAG_Inactive_3Days', Integer),
-            Column('Count_Inactive_3Days', Integer),
-            Column('Count_Inactive_4Days', Integer),
-            Column('Count_Inactive_5Days', Integer),
-            Column('Count_Inactive_10Days_and_more', Integer),
-            Column('CONSUMER_TYPE_M5', Integer),
-            Column('CONSUMER_TYPE_M6', Integer),
-            Column('TRAF_IN_VOICE_ONNET_M5', Integer),
-            Column('CNT_IN_VOICE_INTERNATIONAL_M5', Integer),
-            Column('CNT_IN_SMS_ONNET_M4', Integer),
-            Column('TRAF_IN_VOICE_INTERNATIONAL_W4', Integer),
-            Column('CNT_IN_SMS_OFFNET_W4', Integer),
-            Column('SLOPE_SD_VI_ONNET_DUR', Integer),
-            Column('DEGREES_SD_VI_ONNET_DUR', Integer),
-            Column('SLOPE_VI_OFFNET_DUR', Integer),
-            Column('SLOPE_D__FREE_VOL', Integer),
-            Column('Rev_Month_Before_Current_Month', Integer),
-            Column('TRAF_OUT_VOICE_ONNET_M6', Float),
-            Column('TRAF_OUT_VOICE_ONNET_M4', Float),
-            Column('TRAF_OUT_VOICE_ONNET_M3', Float),
-            Column('REV_BUNDLE_M6', Float),
-            Column('TRAF_OUT_VOICE_ONNET_W4', Float),
-            Column('CNT_OUT_VOICE_ONNET_W4', Float),
-            Column('SLOPE_V_ONNET_DUR', Float),
-            Column('SLOPE_SD_VI_OFFNET_DUR', Float),
-            Column('flag', Integer),
-            Column('pred_flag', Integer),
-            Column('prob_0', Float),
-            Column('prob_1', Float)
-        )
-
-        # Drop the table if it exists and recreate it
-        inspector = inspect(engine)
-        if inspector.has_table('client_data_predictions'):
-            client_data_table.drop(engine)
-        metadata.create_all(engine)
-
-        # Insert the data from the DataFrame into the table
-        df.to_sql('client_data_predictions', engine, if_exists='replace', index=False)
+        # Supprimer le contenu de la table "prediction" avant chaque insertion
+        Prediction.query.delete()
+        db.session.commit()
+        
+        # Insérer les données du DataFrame dans la table "prediction"
+        df.to_sql('prediction', db.engine, if_exists='append', index=False)
 
     return y_pred
  
 predict_dataset()
-
+#______________________________________________________
 @app.route('/dashboard/analytics', methods=["GET"])
 @jwt_required()
 def get_analytics():
     try:
         with app.app_context():
             engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
-            query = "SELECT pred_flag FROM client_data_predictions"
+            query = "SELECT pred_flag FROM prediction"
             df = pd.read_sql(query, engine)
         
         # Convert the prediction column to a pandas Series
@@ -525,10 +465,10 @@ def get_line_chart_data():
 def get_donut_chart_data():
     try:
         sql_query = """
-            SELECT s.value_segment, COUNT(cdp.pred_flag)
-            FROM sous_segment s
-            JOIN client_data_predictions cdp ON cdp."Value_Segment" = s.id_segment
-            GROUP BY s.value_segment
+            SELECT s.value_segment, COUNT(p.pred_flag)
+            FROM sous_segment s, clientdataset c, prediction p
+            WHERE c.value_segment = s.id_segment AND p.id_client = c.id_client
+            GROUP BY s.value_segment;
         """
 
         # Execute the raw SQL query within the context of the Flask application
@@ -554,12 +494,13 @@ def get_table_data():
     try:
         with app.app_context():
             sql_query = """
-                SELECT cdp.id_client, cdp.phone_number, sg.seg_Tenure, ss.value_segment, p.tariff_profile, pred_flag
-                FROM client_data_predictions cdp, Segment_tenure sg, Sous_segment ss, Profiles p
-                WHERE   pred_flag = 1 
-                        and cdp."Seg_Tenure" = sg.id_tenure 
-                        and cdp."Value_Segment" = ss.id_segment
-                        and cdp."Tariff_profile" = p.id_profile ;
+                SELECT p.id_client, ci.phone_number, st.seg_Tenure, ss.value_segment, pr.tariff_profile, p.pred_flag
+                FROM prediction p, clientdataset ci, Segment_tenure st, Sous_segment ss, Profiles pr
+                WHERE p.id_client = ci.id_client
+                    AND ci.seg_tenure = st.id_tenure
+                    AND ci.value_segment = ss.id_segment
+                    AND ci.tariff_profile = pr.id_profile
+                    AND p.pred_flag = 1;
             """
             with db.engine.connect() as connection:
                 result = connection.execute(text(sql_query)).fetchall()
@@ -591,8 +532,9 @@ def get_column_chart_data_tarif():
     try:
         with app.app_context():
             sql_query = """
-                SELECT "Tariff_profile", pred_flag
-                FROM client_data_predictions;
+                SELECT cd.tariff_profile, p.pred_flag
+                FROM prediction p, clientdataset cd
+                WHERE p.id_client = cd.id_client;
             """
             with db.engine.connect() as connection:
                 result = connection.execute(text(sql_query)).fetchall()
@@ -623,8 +565,6 @@ def get_column_chart_data_tarif():
         # Format the data for JSON response
         formatted_data = grouped.to_dict(orient='records')
 
-        print(formatted_data)
-
         return jsonify(formatted_data), 200
     except Exception as e:
         print('Error fetching column chart data:', e)
@@ -638,8 +578,8 @@ def get_max_churn_profile():
         with app.app_context():
             sql_query = """
                 SELECT p.tariff_profile AS tariff_profile_name, SUM(CASE WHEN cdp.pred_flag = 1 THEN 1 ELSE 0 END) AS churnersCount
-                FROM client_data_predictions cdp
-                JOIN profiles p ON cdp."Tariff_profile" = p.id_profile
+                FROM prediction cdp, profiles p, clientdataset c
+                WHERE cdp.id_client = c.id_client AND c.tariff_profile = p.id_profile
                 GROUP BY p.tariff_profile
                 ORDER BY churnersCount DESC
                 LIMIT 1;
@@ -672,8 +612,8 @@ def get_segments_chart_data():
                 s.value_segment,
                 SUM(CASE WHEN cdp.pred_flag = 1 THEN 1 ELSE 0 END) AS nb_churners,
                 SUM(CASE WHEN cdp.pred_flag = 0 THEN 1 ELSE 0 END) AS nb_non_churners
-            FROM sous_segment s
-            JOIN client_data_predictions cdp ON cdp."Value_Segment" = s.id_segment
+            FROM sous_segment s, clientdataset c, prediction cdp
+            WHERE cdp.id_client = c.id_client ANd c.value_segment = s.id_segment
             GROUP BY s.value_segment
         """
 
@@ -692,10 +632,7 @@ def get_segments_chart_data():
             }
             for row in rows
         ]
-        # Print the raw rows and the processed data to the console for debugging
-        print('Raw rows:', rows)
-        print('Processed data:', data)
-
+        
         return jsonify(data), 200
     except Exception as e:
         print('Error fetching donut chart data:', e)
@@ -705,78 +642,67 @@ def get_segments_chart_data():
 @app.route('/maxTenureSegments', methods=['GET'])
 def get_max_tenure_segments_data():
     try:
-        sql_query = """          
+        # Query to get the tenure segment with the most churners
+        sql_query_churners = """
             SELECT 
-                t.seg_tenure AS max_churners_tenure_segment,
-                COUNT(CASE WHEN cdp.pred_flag = 1 THEN 1 END) AS max_churners_count,
-                COUNT(CASE WHEN cdp.pred_flag = 0 THEN 1 END) AS non_churners_count,
-                COUNT(*) AS total_count
+                t.seg_tenure AS tenure_segment,
+                COUNT(*) AS churners_count
             FROM segment_tenure t
-            JOIN client_data_predictions cdp ON cdp."Seg_Tenure" = t.id_tenure
+            JOIN clientdataset c ON c.seg_tenure = t.id_tenure
+            JOIN prediction cdp ON cdp.id_client = c.id_client
+            WHERE cdp.pred_flag = 1
             GROUP BY t.seg_tenure
-            ORDER BY max_churners_count DESC
-            LIMIT 1
+            ORDER BY churners_count DESC
+            LIMIT 1;
         """
-        result = db.session.execute(text(sql_query))
-        data = result.fetchone()
 
-        if data:
-            max_churners_tenure_segment = data[0]
-            max_churners_count = data[1]
-            non_churners_count = data[2]
-            total_count = data[3]
+        # Query to get the tenure segment with the most non-churners
+        sql_query_non_churners = """
+            SELECT 
+                t.seg_tenure AS tenure_segment,
+                COUNT(*) AS non_churners_count
+            FROM segment_tenure t
+            JOIN clientdataset c ON c.seg_tenure = t.id_tenure
+            JOIN prediction cdp ON cdp.id_client = c.id_client
+            WHERE cdp.pred_flag = 0
+            GROUP BY t.seg_tenure
+            ORDER BY non_churners_count DESC
+            LIMIT 1;
+        """
 
-            max_churners_percentage = (max_churners_count / total_count) * 100
+        # Execute queries
+        churners_result = db.session.execute(text(sql_query_churners)).fetchone()
+        non_churners_result = db.session.execute(text(sql_query_non_churners)).fetchone()
+
+        if churners_result and non_churners_result:
+            churners_segment = churners_result[0]
+            churners_count = churners_result[1]
+            non_churners_segment = non_churners_result[0]
+            non_churners_count = non_churners_result[1]
+
+            total_count_query = """
+                SELECT COUNT(*) FROM clientdataset
+            """
+            total_count_result = db.session.execute(text(total_count_query)).fetchone()
+            total_count = total_count_result[0]
+
+            churners_percentage = (churners_count / total_count) * 100
             non_churners_percentage = (non_churners_count / total_count) * 100
 
             result_data = {
-                'maxChurnersTenureSegment': max_churners_tenure_segment,
-                'maxChurnersCount': max_churners_count,
-                'maxChurnersPercentage': round(max_churners_percentage, 2),
-                'nonChurnersCount': non_churners_count,
-                'nonChurnersPercentage': round(non_churners_percentage, 2)
+                'maxChurnersTenureSegment': churners_segment,
+                'maxChurnersCount': churners_count,
+                'maxChurnersPercentage': round(churners_percentage, 2),
+                'maxNonChurnersTenureSegment': non_churners_segment,
+                'maxNonChurnersCount': non_churners_count,
+                'maxNonChurnersPercentage': round(non_churners_percentage, 2)
             }
-            print('Data:', result_data)
             return jsonify(result_data), 200
         else:
             return jsonify({'error': 'No data found'}), 404
 
     except Exception as e:
         print('Error fetching max tenure segments data:', e)
-        return jsonify({'error': 'Internal Server Error'}), 500
-    
-#______________________________________________________
-#Segment_tenure
-@app.route('/TenureSegments', methods=['GET'])
-def get_tenure_segments_chart_data():
-    try:
-        sql_query = """          
-            SELECT 
-                t.seg_tenure,
-                SUM(CASE WHEN cdp.pred_flag = 1 THEN 1 ELSE 0 END) AS nb_churners_,
-                SUM(CASE WHEN cdp.pred_flag = 0 THEN 1 ELSE 0 END) AS nb_non_churners_
-            FROM segment_tenure t
-            JOIN client_data_predictions cdp ON cdp."Seg_Tenure" = t.id_tenure
-            GROUP BY t.seg_tenure
-        """
-        
-        result = db.session.execute(text(sql_query))
-        
-        rows = result.fetchall()
-        data_2 = [
-            {
-                'tenureSegment': row[0],
-                'nbChurners': row[1],
-                'nbNonChurners': row[2]
-            }
-            for row in rows
-        ]
-        
-        print('Processed data:', data_2)
-
-        return jsonify(data_2), 200
-    except Exception as e:
-        print('Error fetching tenure segments chart data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
 
@@ -873,10 +799,6 @@ def uplift_method():
     for i in range(10):
         deciles_data[i] = combined_df_sorted[combined_df_sorted['Percentile'] == i]
     
-    print(churners_per_decile)
-    print(deciles_data)
-    
-    
     return churners_per_decile, deciles_data
 
 #______________________________________________________
@@ -936,10 +858,6 @@ def predict_customer():
 
         db_phone_number = str(client.phone_number).strip()
         input_phone_number = str(phonenumber).strip()
-
-        # Print for debugging
-        print(f"DB Phone Number: {db_phone_number} (Type: {type(db_phone_number)})")
-        print(f"Input Phone Number: {input_phone_number} (Type: {type(input_phone_number)})")
 
         if db_phone_number != input_phone_number:
             return jsonify({"error": "Le numéro de téléphone ne correspond pas à l'ID du client"}), 401
@@ -1003,7 +921,7 @@ def predict_customer():
         print('Error fetching client data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
-
+#______________________________________________________
 @app.route('/client-data', methods=['GET'])
 def get_client_data():
     try:
@@ -1014,7 +932,7 @@ def get_client_data():
         print('Error fetching client data:', e)
         return jsonify({'error': 'Internal Server Error'}), 500
 
-
+#______________________________________________________
 @app.route('/client-phone/<int:id>', methods=['GET'])
 def get_client_phone(id):
     try:
@@ -1070,10 +988,8 @@ def login_user():
             return jsonify({"error": "Non autorisé"}), 401
 
         session["user_id"] = user.id
-        print("User ID set in session:", session.get("user_id"))
         
         role_name = user.role.name
-        print(role_name)
         # Generate token
         token = create_access_token(identity=user.email)
 
