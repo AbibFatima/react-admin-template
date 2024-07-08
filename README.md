@@ -91,15 +91,16 @@ flask run
     Backend: Flask, Python, SQLAlchemy, Redis, JWT, Pandas, Scikit-Learn
     Database: PostgreSQL
 
-License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-Contact
+
+## Contact
 
     Name: Abib Fatima
     Email: fatima.abib5@gmail.com
     GitHub: AbibFatima
-    or
+    _________________________________
     Name: Bouzidi Sarra
     Email: sarrabzd29@gmail.com
     GitHub: sarrabzd29
